@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obc.dev/standards/v1/offchain-schema.json",
+  "title": "OBC v1 Off-Chain Journal Document",
+  "description": "Schema for an OBC v1 certified off-chain journal document stored in Azure Blob Storage.",
+  "type": "object",
+  "required": [
+    "journalDate",
+    "exchangeRate",
+    "includeInVatReturn",
+    "isBasAdjustment",
+    "lineItemTotal",
+    "total",
+    "bcyTotal",
+    "pricePrecision",
+    "originalCreatedTime",
+    "lastModifiedTime",
+    "lineItems",
+    "taxes",
+    "customFields"
+  ],
+  "properties": {
+    "entryNumber": {
+      "type": ["string", "null"],
+      "description": "Journal entry number from the accounting system."
+    },
+    "documentReference": {
+      "type": ["string", "null"],
+      "description": "Source document reference."
+    },
+    "documentJournalId": {
+      "type": ["string", "null"],
+      "description": "Internal journal ID from the accounting system."
+    },
+    "journalDate": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Accounting date of the journal entry (ISO 8601)."
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Free-text notes."
+    },
+    "currencyId": {
+      "type": ["string", "null"],
+      "description": "Currency identifier."
+    },
+    "currencyCode": {
+      "type": ["string", "null"],
+      "description": "ISO 4217 currency code (e.g. AUD, USD)."
+    },
+    "currencySymbol": {
+      "type": ["string", "null"],
+      "description": "Currency display symbol (e.g. $)."
+    },
+    "exchangeRate": {
+      "type": "number",
+      "description": "Exchange rate to base currency at time of entry."
+    },
+    "journalType": {
+      "type": ["string", "null"],
+      "description": "Journal type (e.g. manual, system)."
+    },
+    "vatTreatment": {
+      "type": ["string", "null"],
+      "description": "VAT/GST treatment applied."
+    },
+    "productType": {
+      "type": ["string", "null"],
+      "description": "Product type classification."
+    },
+    "includeInVatReturn": {
+      "type": "boolean",
+      "description": "Whether this journal is included in the VAT return."
+    },
+    "isBasAdjustment": {
+      "type": "boolean",
+      "description": "Whether this is a BAS adjustment (AU)."
+    },
+    "lineItemTotal": {
+      "type": "number",
+      "description": "Sum of all line item amounts (before tax)."
+    },
+    "total": {
+      "type": "number",
+      "description": "Total including tax in transaction currency."
+    },
+    "bcyTotal": {
+      "type": "number",
+      "description": "Total in base currency."
+    },
+    "pricePrecision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Number of decimal places used in amount fields."
+    },
+    "originalCreatedTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the original document was created in the source system (ISO 8601)."
+    },
+    "lastModifiedTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the document was last modified in the source system (ISO 8601)."
+    },
+    "originalStatus": {
+      "type": ["string", "null"],
+      "description": "Status of the document in the source system."
+    },
+    "lineItems": {
+      "type": "array",
+      "description": "Journal debit/credit lines.",
+      "items": {
+        "$ref": "#/$defs/LineItem"
+      }
+    },
+    "taxes": {
+      "type": "array",
+      "description": "Tax breakdown. May be empty.",
+      "items": {
+        "$ref": "#/$defs/Tax"
+      }
+    },
+    "customFields": {
+      "type": "array",
+      "description": "Tenant-defined custom metadata. May be empty.",
+      "items": {
+        "$ref": "#/$defs/CustomField"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "LineItem": {
+      "type": "object",
+      "required": ["amount", "tags"],
+      "properties": {
+        "accountCode": {
+          "type": ["string", "null"],
+          "description": "Chart of accounts code. May be anonymized."
+        },
+        "accountName": {
+          "type": ["string", "null"],
+          "description": "Chart of accounts name. May be anonymized."
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Line description."
+        },
+        "debitOrCredit": {
+          "type": ["string", "null"],
+          "enum": ["debit", "credit", null],
+          "description": "debit or credit."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Absolute amount for this line."
+        },
+        "customerName": {
+          "type": ["string", "null"],
+          "description": "Associated customer name. May be anonymized."
+        },
+        "taxName": {
+          "type": ["string", "null"],
+          "description": "Tax component name on the line. May be anonymized."
+        },
+        "taxAuthorityName": {
+          "type": ["string", "null"],
+          "description": "Tax authority name. May be anonymized."
+        },
+        "acquisitionVatName": {
+          "type": ["string", "null"],
+          "description": "Acquisition VAT name. May be anonymized."
+        },
+        "reverseChargeVatName": {
+          "type": ["string", "null"],
+          "description": "Reverse charge VAT name. May be anonymized."
+        },
+        "projectName": {
+          "type": ["string", "null"],
+          "description": "Project name. May be anonymized."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tracking tags.",
+          "items": {
+            "$ref": "#/$defs/Tag"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Tax": {
+      "type": "object",
+      "required": ["taxAmount"],
+      "properties": {
+        "taxName": {
+          "type": ["string", "null"],
+          "description": "Name of the tax component."
+        },
+        "taxAmount": {
+          "type": "number",
+          "description": "Amount of tax."
+        }
+      },
+      "additionalProperties": false
+    },
+    "CustomField": {
+      "type": "object",
+      "properties": {
+        "fieldName": {
+          "type": ["string", "null"],
+          "description": "Custom field label."
+        },
+        "fieldValue": {
+          "type": ["string", "null"],
+          "description": "Custom field value."
+        }
+      },
+      "additionalProperties": false
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "tagName": {
+          "type": ["string", "null"],
+          "description": "Tag category name."
+        },
+        "tagValue": {
+          "type": ["string", "null"],
+          "description": "Tag value."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

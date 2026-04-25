@@ -1,0 +1,31 @@
+[
+  {
+    "version": "1",
+    "standardId": "obc-v1",
+    "status": "active",
+    "introduced": "2025",
+    "description": "Initial OBC standard. On-chain Solana memo with SHA-256 hash and one or more file-storage URLs. Off-chain JSON contains the full journal with optional per-field anonymization.",
+    "onChainSchemaUrl": "standards/v1/onchain-schema.json",
+    "offChainSchemaUrl": "standards/v1/offchain-schema.json",
+    "readmeUrl": "standards/v1/README.md",
+    "onChainFields": ["v", "h", "a"],
+    "optionalOnChainFields": ["a1", "a2", "<tenant-configured-journal-fields>"],
+    "hashAlgorithm": "SHA-256",
+    "blockchains": {
+      "production": ["solana"],
+      "planned": ["ethereum"]
+    },
+    "fileStorages": {
+      "production": ["azure", "azureblob"],
+      "preview": ["ipfs"]
+    },
+    "anonymizableLineItemFields": [
+      "accountName", "accountCode", "customerName",
+      "taxName", "taxAuthorityName",
+      "acquisitionVatName", "reverseChargeVatName",
+      "projectName"
+    ],
+    "fileNamingPattern": "file-{documentJournalId}.json"
+  }
+]
+

@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OBC.Verify.Web/OBC.Verify.Web.csproj" />
+  </Folder>
+</Solution>

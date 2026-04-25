@@ -1,0 +1,170 @@
+@page "/verify"
+@using OBC.Verify.Web.Models
+@using OBC.Verify.Web.Services
+@inject VerificationService VerificationService
+@rendermode InteractiveServer
+
+<PageTitle>Verify — OBC</PageTitle>
+
+<div class="container py-5" style="max-width:760px">
+    <div class="mb-4">
+        <h1 class="h3 fw-bold">OBC Record Verifier</h1>
+        <p class="text-secondary">
+            Enter a Solana transaction ID to independently verify a certified OBC journal record.
+            No access to the OBC platform is required.
+        </p>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <EditForm Model="_input" OnValidSubmit="RunVerificationAsync" FormName="verify-form">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Solana Transaction ID</label>
+                    <InputText @bind-Value="_input.TransactionId"
+                               class="form-control font-monospace"
+                               placeholder="e.g. 5U1q...Kj7R" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Network</label>
+                    <InputSelect @bind-Value="_input.Network" class="form-select">
+                        <option value="@SolanaNetwork.MainnetBeta">Mainnet Beta</option>
+                        <option value="@SolanaNetwork.Devnet">Devnet</option>
+                        <option value="@SolanaNetwork.Testnet">Testnet</option>
+                    </InputSelect>
+                </div>
+                <button type="submit" class="btn btn-primary" disabled="@_loading">
+                    @if (_loading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Verifying…</span>
+                    }
+                    else
+                    {
+                        <span>Verify</span>
+                    }
+                </button>
+            </EditForm>
+        </div>
+    </div>
+
+    @if (_result is not null)
+    {
+        <div class="card shadow-sm mb-4 border-@(_result.IsVerified ? "success" : "danger")">
+            <div class="card-header @(_result.IsVerified ? "bg-success" : "bg-danger") text-white fw-bold d-flex align-items-center gap-2">
+                @if (_result.IsVerified)
+                {
+                    <span>✅ Verified</span>
+                }
+                else
+                {
+                    <span>❌ Verification Failed</span>
+                }
+            </div>
+            <div class="card-body">
+
+                @if (!_result.IsVerified && !string.IsNullOrEmpty(_result.ErrorMessage))
+                {
+                    <div class="alert alert-danger">@_result.ErrorMessage</div>
+                }
+
+                <table class="table table-sm table-borderless mb-0">
+                    <tbody>
+                        @if (!string.IsNullOrEmpty(_result.StandardVersion))
+                        {
+                            <tr>
+                                <th class="text-secondary" style="width:180px">Standard</th>
+                                <td>obc-v@(_result.StandardVersion)</td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(_result.Network))
+                        {
+                            <tr>
+                                <th class="text-secondary">Network</th>
+                                <td>@_result.Network</td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(_result.OnChainHash))
+                        {
+                            <tr>
+                                <th class="text-secondary">On-chain Hash</th>
+                                <td class="font-monospace text-break small">@_result.OnChainHash</td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(_result.ComputedHash))
+                        {
+                            <tr>
+                                <th class="text-secondary">Computed Hash</th>
+                                <td class="font-monospace text-break small @(string.Equals(_result.ComputedHash, _result.OnChainHash, StringComparison.OrdinalIgnoreCase) ? "text-success" : "text-danger")">
+                                    @_result.ComputedHash
+                                </td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(_result.FileUrl))
+                        {
+                            <tr>
+                                <th class="text-secondary">File URL</th>
+                                <td><a href="@_result.FileUrl" target="_blank" class="text-break small">@_result.FileUrl</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-semibold">Verification Steps</div>
+            <ul class="list-group list-group-flush">
+                @foreach (var step in _result.Steps)
+                {
+                    <li class="list-group-item d-flex gap-3 align-items-start py-2">
+                        <span class="mt-1">@(step.Passed ? "✅" : "❌")</span>
+                        <div>
+                            <div class="fw-semibold">@step.Name</div>
+                            @if (!string.IsNullOrEmpty(step.Detail))
+                            {
+                                <div class="text-secondary small font-monospace text-break">@step.Detail</div>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        @if (_result.IsVerified && !string.IsNullOrEmpty(_result.OffChainDocumentJson))
+        {
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">Off-Chain Document</div>
+                <div class="card-body p-0">
+                    <pre class="m-0 p-3 small" style="max-height:400px;overflow:auto;background:#f8f9fa">@_result.OffChainDocumentJson</pre>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private readonly VerifyInput _input = new();
+    private VerificationResult? _result;
+    private bool _loading;
+
+    private async Task RunVerificationAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_input.TransactionId)) return;
+        _loading = true;
+        _result = null;
+        try
+        {
+            _result = await VerificationService.VerifyAsync(_input.TransactionId.Trim(), _input.Network);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class VerifyInput
+    {
+        public string TransactionId { get; set; } = string.Empty;
+        public SolanaNetwork Network { get; set; } = SolanaNetwork.MainnetBeta;
+    }
+}
