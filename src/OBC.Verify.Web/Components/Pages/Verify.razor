@@ -1,17 +1,18 @@
+@page "/"
 @page "/verify"
 @using OBC.Verify.Web.Models
 @using OBC.Verify.Web.Services
 @inject VerificationService VerificationService
 @rendermode InteractiveServer
 
-<PageTitle>Verify — OBC</PageTitle>
+<PageTitle>OBC Verify — Solana Record Verifier</PageTitle>
 
 <div class="container py-5" style="max-width:760px">
     <div class="mb-4">
         <h1 class="h3 fw-bold">OBC Record Verifier</h1>
         <p class="text-secondary">
             Enter a Solana transaction ID to independently verify a certified OBC journal record.
-            No access to the OBC platform is required.
+            No access to the OBC platform is required — verification is fully on-chain.
         </p>
     </div>
 

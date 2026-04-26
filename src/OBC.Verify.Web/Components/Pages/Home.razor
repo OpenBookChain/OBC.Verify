@@ -1,7 +1,6 @@
-﻿@page "/"
+﻿@page "/home"
+@inject NavigationManager Nav
 
-<PageTitle>Home</PageTitle>
-
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
+@code {
+    protected override void OnInitialized() => Nav.NavigateTo("/", replace: true);
+}
