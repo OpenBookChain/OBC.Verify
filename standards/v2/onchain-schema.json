@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obc.dev/standards/v2/onchain-schema.json",
+  "title": "OBC v2 On-Chain Memo",
+  "description": "Schema for the OBC v2 JSON memo stored in a Solana transaction. Version 2 adds support for multi-dimensional accounting with up to 10 account codes per line item.",
+  "type": "object",
+  "required": ["v", "h", "a"],
+  "properties": {
+    "v": {
+      "type": "string",
+      "const": "2",
+      "description": "OBC standard version. Always '2' for this standard."
+    },
+    "h": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 hex digest (lowercase, 64 chars) of the canonical off-chain JSON document."
+    },
+    "a": {
+      "type": "string",
+      "format": "uri",
+      "description": "HTTPS URL to the primary off-chain JSON document."
+    },
+    "a1": {
+      "type": "string",
+      "format": "uri",
+      "description": "HTTPS URL to the second off-chain JSON document (if multiple storage targets)."
+    },
+    "a2": {
+      "type": "string",
+      "format": "uri",
+      "description": "HTTPS URL to the third off-chain JSON document (if multiple storage targets)."
+    }
+  },
+  "additionalProperties": {
+    "type": "string",
+    "description": "Optional tenant-configured on-chain journal property fields."
+  }
+}

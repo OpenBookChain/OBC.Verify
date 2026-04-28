@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obc.dev/standards/v2/offchain-schema.json",
+  "title": "OBC v2 Off-Chain Journal Document",
+  "description": "Schema for the off-chain JSON document stored in file storage. Version 2 adds support for multi-dimensional accounting with up to 10 account codes per line item.",
+  "type": "object",
+  "required": [
+    "version",
+    "entryNumber",
+    "journalDate",
+    "lineItems",
+    "taxes",
+    "customFields"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 2,
+      "description": "Off-chain document version. Always 2 for this standard."
+    },
+    "entryNumber": {
+      "type": ["string", "null"],
+      "description": "Journal entry number."
+    },
+    "documentReference": {
+      "type": ["string", "null"],
+      "description": "External document reference (e.g., invoice number)."
+    },
+    "documentJournalId": {
+      "type": ["string", "null"],
+      "description": "Unique journal ID from the source system."
+    },
+    "journalDate": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Journal effective date (ISO 8601)."
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Journal memo or notes."
+    },
+    "currencyId": {
+      "type": ["string", "null"],
+      "description": "Currency system ID."
+    },
+    "currencyCode": {
+      "type": ["string", "null"],
+      "description": "ISO 4217 currency code (e.g., USD, EUR, AUD)."
+    },
+    "currencySymbol": {
+      "type": ["string", "null"],
+      "description": "Currency symbol (e.g., $, €, £)."
+    },
+    "exchangeRate": {
+      "type": "number",
+      "description": "Exchange rate to base currency."
+    },
+    "journalType": {
+      "type": ["string", "null"],
+      "description": "Type of journal (manual, invoice, purchase, etc.)."
+    },
+    "vatTreatment": {
+      "type": ["string", "null"],
+      "description": "VAT treatment code."
+    },
+    "productType": {
+      "type": ["string", "null"],
+      "description": "Product type classification."
+    },
+    "includeInVatReturn": {
+      "type": "boolean",
+      "description": "Whether to include in VAT return."
+    },
+    "isBasAdjustment": {
+      "type": "boolean",
+      "description": "Whether this is a BAS adjustment entry."
+    },
+    "lineItemTotal": {
+      "type": "number",
+      "description": "Sum of line item amounts."
+    },
+    "total": {
+      "type": "number",
+      "description": "Total amount in transaction currency."
+    },
+    "bcyTotal": {
+      "type": "number",
+      "description": "Total amount in base currency."
+    },
+    "pricePrecision": {
+      "type": "integer",
+      "description": "Number of decimal places for amounts."
+    },
+    "originalCreatedTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the document was created in the source system (ISO 8601)."
+    },
+    "lastModifiedTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the document was last modified in the source system (ISO 8601)."
+    },
+    "originalStatus": {
+      "type": ["string", "null"],
+      "description": "Status of the document in the source system."
+    },
+    "lineItems": {
+      "type": "array",
+      "description": "Journal debit/credit lines.",
+      "items": {
+        "$ref": "#/$defs/LineItem"
+      }
+    },
+    "taxes": {
+      "type": "array",
+      "description": "Tax breakdown. May be empty.",
+      "items": {
+        "$ref": "#/$defs/Tax"
+      }
+    },
+    "customFields": {
+      "type": "array",
+      "description": "Tenant-defined custom metadata. May be empty.",
+      "items": {
+        "$ref": "#/$defs/CustomField"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "LineItem": {
+      "type": "object",
+      "required": ["amount", "tags"],
+      "properties": {
+        "accountCode1": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 1 (e.g., Department, Fund). May be anonymized."
+        },
+        "accountCodeName1": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 1. May be anonymized."
+        },
+        "accountCode2": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 2 (e.g., Cost Center, Program). May be anonymized."
+        },
+        "accountCodeName2": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 2. May be anonymized."
+        },
+        "accountCode3": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 3 (e.g., Project, Grant). May be anonymized."
+        },
+        "accountCodeName3": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 3. May be anonymized."
+        },
+        "accountCode4": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 4 (e.g., Location). May be anonymized."
+        },
+        "accountCodeName4": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 4. May be anonymized."
+        },
+        "accountCode5": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 5. May be anonymized."
+        },
+        "accountCodeName5": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 5. May be anonymized."
+        },
+        "accountCode6": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 6. May be anonymized."
+        },
+        "accountCodeName6": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 6. May be anonymized."
+        },
+        "accountCode7": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 7. May be anonymized."
+        },
+        "accountCodeName7": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 7. May be anonymized."
+        },
+        "accountCode8": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 8. May be anonymized."
+        },
+        "accountCodeName8": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 8. May be anonymized."
+        },
+        "accountCode9": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 9. May be anonymized."
+        },
+        "accountCodeName9": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 9. May be anonymized."
+        },
+        "accountCode10": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code 10. May be anonymized."
+        },
+        "accountCodeName10": {
+          "type": ["string", "null"],
+          "description": "Multi-dimensional account code name 10. May be anonymized."
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Line description."
+        },
+        "debitOrCredit": {
+          "type": ["string", "null"],
+          "enum": ["debit", "credit", null],
+          "description": "debit or credit."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Absolute amount for this line."
+        },
+        "customerName": {
+          "type": ["string", "null"],
+          "description": "Associated customer name. May be anonymized."
+        },
+        "taxName": {
+          "type": ["string", "null"],
+          "description": "Tax component name on the line. May be anonymized."
+        },
+        "taxAuthorityName": {
+          "type": ["string", "null"],
+          "description": "Tax authority name. May be anonymized."
+        },
+        "acquisitionVatName": {
+          "type": ["string", "null"],
+          "description": "Acquisition VAT name. May be anonymized."
+        },
+        "reverseChargeVatName": {
+          "type": ["string", "null"],
+          "description": "Reverse charge VAT name. May be anonymized."
+        },
+        "projectName": {
+          "type": ["string", "null"],
+          "description": "Project name. May be anonymized."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tracking tags.",
+          "items": {
+            "$ref": "#/$defs/Tag"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Tax": {
+      "type": "object",
+      "required": ["taxAmount"],
+      "properties": {
+        "taxName": {
+          "type": ["string", "null"],
+          "description": "Name of the tax component."
+        },
+        "taxAmount": {
+          "type": "number",
+          "description": "Amount of tax."
+        }
+      },
+      "additionalProperties": false
+    },
+    "CustomField": {
+      "type": "object",
+      "properties": {
+        "fieldName": {
+          "type": ["string", "null"],
+          "description": "Custom field label."
+        },
+        "fieldValue": {
+          "type": ["string", "null"],
+          "description": "Custom field value."
+        }
+      },
+      "additionalProperties": false
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "tagName": {
+          "type": ["string", "null"],
+          "description": "Tag category name."
+        },
+        "tagValue": {
+          "type": ["string", "null"],
+          "description": "Tag value."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

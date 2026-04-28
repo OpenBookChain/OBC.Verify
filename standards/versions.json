@@ -26,6 +26,54 @@
       "projectName"
     ],
     "fileNamingPattern": "file-{documentJournalId}.json"
+  },
+  {
+    "version": "2",
+    "standardId": "obc-v2",
+    "status": "active",
+    "introduced": "2026",
+    "description": "Version 2 adds multi-dimensional accounting support with up to 10 account codes per line item. Supports complex organizational structures like fund accounting, cost centers, departments, projects, and grants.",
+    "onChainSchemaUrl": "standards/v2/onchain-schema.json",
+    "offChainSchemaUrl": "standards/v2/offchain-schema.json",
+    "readmeUrl": "standards/v2/README.md",
+    "onChainFields": ["v", "h", "a"],
+    "optionalOnChainFields": ["a1", "a2", "<tenant-configured-journal-fields>"],
+    "hashAlgorithm": "SHA-256",
+    "blockchains": {
+      "production": ["solana"],
+      "planned": ["ethereum"]
+    },
+    "fileStorages": {
+      "production": ["azure", "azureblob"],
+      "preview": ["ipfs"]
+    },
+    "anonymizableLineItemFields": [
+      "customerName",
+      "taxName", "taxAuthorityName",
+      "acquisitionVatName", "reverseChargeVatName",
+      "projectName",
+      "accountCode1", "accountCodeName1",
+      "accountCode2", "accountCodeName2",
+      "accountCode3", "accountCodeName3",
+      "accountCode4", "accountCodeName4",
+      "accountCode5", "accountCodeName5",
+      "accountCode6", "accountCodeName6",
+      "accountCode7", "accountCodeName7",
+      "accountCode8", "accountCodeName8",
+      "accountCode9", "accountCodeName9",
+      "accountCode10", "accountCodeName10"
+    ],
+    "fileNamingPattern": "file-{documentJournalId}.json",
+    "newFeatures": [
+      "Multi-dimensional accounting with 10 account code slots",
+      "Support for fund accounting (non-profits)",
+      "Support for cost center tracking",
+      "Support for department/division tracking",
+      "Support for project/grant tracking",
+      "Enhanced anonymization for all 10 dimensions"
+    ],
+    "backwardCompatible": true,
+    "migrationType": "additive"
   }
 ]
 
