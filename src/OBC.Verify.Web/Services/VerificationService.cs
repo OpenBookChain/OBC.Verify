@@ -8,6 +8,12 @@ namespace OBC.Verify.Web.Services;
 
 public class VerificationService
 {
+    private static readonly HashSet<string> SupportedStandardVersions = new(StringComparer.Ordinal)
+    {
+        "1",
+        "2"
+    };
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<VerificationService> _logger;
 
@@ -80,11 +86,19 @@ public class VerificationService
         result.FileUrl = memo.FileUrl;
 
         // Step 4: Assert version
-        if (memo.Version != "1")
+        if (!SupportedStandardVersions.Contains(memo.Version))
         {
-            return Fail(result, "Check Standard Version", $"Unsupported standard version '{memo.Version}'. Only '1' is supported by this verifier.");
+            return Fail(
+                result,
+                "Check Standard Version",
+                $"Unsupported standard version '{memo.Version}'. Only '1' and '2' are supported by this verifier.");
         }
-        result.Steps.Add(new VerificationStep { Name = "Check Standard Version", Passed = true, Detail = $"v{memo.Version} (obc-v1)" });
+        result.Steps.Add(new VerificationStep
+        {
+            Name = "Check Standard Version",
+            Passed = true,
+            Detail = $"v{memo.Version} (obc-v{memo.Version})"
+        });
 
         // Step 5: Validate hash format
         if (string.IsNullOrEmpty(memo.Hash) || memo.Hash.Length != 64 || !IsHex(memo.Hash))
