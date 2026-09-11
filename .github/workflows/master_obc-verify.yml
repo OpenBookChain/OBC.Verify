@@ -48,18 +48,24 @@ jobs:
         with:
           name: .net-app
       
-      - name: Login to Azure
-        uses: azure/login@v2
+      - name: Copy files to VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_707D5537A2604704BD68E3E58815CF37 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_7B9B77BFD21441C1A3D13CD7A3FF70C4 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_30AFA674DBDD43B7909365CC384FF385 }}
+          host: ${{ secrets.VPS_HOST }}
+          username: 'deployer'
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "./myapp/*"
+          target: "/var/www/verify"
+          strip_components: 1
+          overwrite: true
+          timeout: 3m
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
+      - name: Restart systemd service
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          app-name: 'OBC-Verify'
-          slot-name: 'Production'
-          package: .
+          host: ${{ secrets.VPS_HOST }}
+          username: 'deployer'
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            sudo systemctl restart verify.service
           
