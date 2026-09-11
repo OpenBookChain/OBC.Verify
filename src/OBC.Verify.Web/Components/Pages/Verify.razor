@@ -107,6 +107,20 @@
                                 <td><a href="@_result.FileUrl" target="_blank" class="text-break small">@_result.FileUrl</a></td>
                             </tr>
                         }
+                        @if (!string.IsNullOrEmpty(_result.TransactionId))
+                        {
+                            var cluster = _result.Network switch
+                            {
+                                "Devnet"  => "?cluster=devnet",
+                                "Testnet" => "?cluster=testnet",
+                                _         => string.Empty
+                            };
+                            var explorerUrl = $"https://explorer.solana.com/tx/{_result.TransactionId}{cluster}";
+                            <tr>
+                                <th class="text-secondary">Explorer</th>
+                                <td><a href="@explorerUrl" target="_blank" class="text-break small">@explorerUrl</a></td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
