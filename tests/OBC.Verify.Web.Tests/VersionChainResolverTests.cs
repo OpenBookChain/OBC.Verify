@@ -225,6 +225,23 @@ public class VersionChainResolverTests
     }
 
     [Fact]
+    public async Task Incomplete_scan_does_not_report_unseen_old_versions_as_gaps()
+    {
+        // Versions 1 and 2 are older than the one page that gets scanned.
+        _reader.AddMemo(TestData.Publisher, TestData.MemoV3(H1, 1));
+        _reader.AddMemo(TestData.Publisher, TestData.MemoV3(H2, 2, H1));
+        for (var i = 0; i < VersionChainResolver.PageSize; i++) _reader.AddMemo(TestData.Publisher, "noise");
+        var s3 = _reader.AddMemo(TestData.Publisher, TestData.MemoV3(H3, 3, H2));
+
+        var report = await Resolve(s3, maxPages: 1);
+
+        Assert.False(report.ScanComplete);
+        Assert.DoesNotContain(report.Warnings, w => w.StartsWith("Chain gap"));
+        Assert.Contains(report.Warnings, w => w.Contains("not found in the scanned part of the history"));
+        Assert.Contains(report.Warnings, w => w.StartsWith("History incomplete"));
+    }
+
+    [Fact]
     public async Task Default_scan_bound_is_three_pages()
     {
         var s1 = _reader.AddMemo(TestData.Publisher, TestData.MemoV3(H1, 1));

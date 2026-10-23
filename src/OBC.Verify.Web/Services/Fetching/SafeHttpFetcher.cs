@@ -214,8 +214,7 @@ public static class UrlGuard
             if ((b[0] & 0xfe) == 0xfc) return true;                 // fc00::/7 unique local
             if (b[0] == 0x20 && b[1] == 0x02) return true;          // 2002::/16 6to4 can embed private IPv4
             if (b[0] == 0x00 && b[1] == 0x64 && b[2] == 0xff && b[3] == 0x9b) return true; // 64:ff9b::/96 NAT64
-            if (ip.IsIPv4MappedToIPv6) return true;
-            return false;
+            return false; // IPv4-mapped addresses were mapped to IPv4 above
         }
 
         return true;

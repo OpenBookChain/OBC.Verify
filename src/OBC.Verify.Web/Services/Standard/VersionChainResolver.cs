@@ -184,18 +184,21 @@ public sealed class VersionChainResolver
             report.Previous = versions.FirstOrDefault(v => v.Number == current.Number - 1 && v.Hash == current.PreviousHash);
             if (report.Previous is null)
             {
-                report.Warnings.Add($"Chain gap: previous version {current.Number - 1} (h = {current.PreviousHash}) was not found.");
+                report.Warnings.Add(report.ScanComplete
+                    ? $"Chain gap: previous version {current.Number - 1} (h = {current.PreviousHash}) was not found."
+                    : $"Previous version {current.Number - 1} (h = {current.PreviousHash}) was not found in the scanned part of the history.");
             }
         }
 
-        // Gaps and broken links anywhere in the chain
+        // Gaps and broken links anywhere in the chain. The scan reads newest first, so a scan that stopped early
+        // misses the oldest versions: a missing number is only a gap when the scan was complete.
         var maxNumber = versions.Max(v => v.Number);
         var byNumber = versions.GroupBy(v => v.Number).ToDictionary(g => g.Key, g => g.ToList());
         for (var n = 1L; n <= maxNumber; n++)
         {
             if (!byNumber.ContainsKey(n))
             {
-                if (n != current.Number - 1) report.Warnings.Add($"Chain gap: version {n} was not found.");
+                if (report.ScanComplete && n != current.Number - 1) report.Warnings.Add($"Chain gap: version {n} was not found.");
                 continue;
             }
             if (n == 1 || !byNumber.TryGetValue(n - 1, out var previous)) continue;
