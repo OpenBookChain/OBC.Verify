@@ -2,7 +2,6 @@
 
 **Status:** Active  
 **Introduced:** 2026  
-**Specification issues:** [SHAliakbari/OBC#47](https://github.com/SHAliakbari/OBC/issues/47) (this v3 specification) and [SHAliakbari/OBC#48](https://github.com/SHAliakbari/OBC/issues/48) (support for more document types, e.g. invoices)
 **Schemas:** [`onchain-schema.json`](onchain-schema.json) | [`location-schema.json`](location-schema.json) | [`envelope-schema.json`](envelope-schema.json) | [`types.json`](types.json)
 
 ## 1. Overview
@@ -144,7 +143,7 @@ Unknown top-level fields must be ignored.
 - [`types.json`](types.json) lists the known schema ids and points to `types/<type>/<n>/schema.json`.
 - Entries:
   - `obc.journal/2` ([schema](types/journal/2/schema.json)): the v2 journal content (the v2 off-chain document without its top-level `version`), with property names as OBC serializes them (PascalCase, e.g. `EntryNumber`, `LineItems`). **Required** for v3.
-  - `obc.invoice/1`: reserved for the invoice type, drafted in [SHAliakbari/OBC#48](https://github.com/SHAliakbari/OBC/issues/48).
+  - `obc.invoice/1`: reserved for the invoice type. Its schema isn't defined yet.
 - A schema version, once published, never changes. New fields mean `obc.<type>/<n+1>`.
 - Type schemas are closed: `obc.journal/2` sets `additionalProperties: false`, so a field the publisher adds later fails validation against it. That is intended. A publisher that adds a field must publish it under a new schema id (e.g. `obc.journal/3`) and keep emitting the old shape for the old id.
 - Fields that the publisher omits when they are empty or null (such as `EntryNumber` when a journal has neither an entry number nor a reference) are optional in the schema. `JournalDate`, `LineItems`, `Taxes` and `CustomFields` are always emitted, and every line item always has `Amount` and `Tags`.
