@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obc.dev/standards/v3/onchain-schema.json",
+  "title": "OBC v3 On-Chain Memo",
+  "description": "Schema for the OBC v3 JSON memo stored in a Solana transaction, signed by the publisher wallet, in an instruction of the p-memo program (Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH) or, for records published before the switch, SPL Memo (MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr). The memo carries no storage location: verifiers resolve it through the publisher's location account (location-schema.json). The memo JSON must be at most 950 bytes (UTF-8).",
+  "type": "object",
+  "required": ["v", "h", "d", "n"],
+  "properties": {
+    "v": {
+      "type": "string",
+      "const": "3",
+      "description": "OBC standard version. Always '3' for this standard."
+    },
+    "h": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 hex digest (lowercase, 64 chars) of the exact off-chain file bytes. The file is stored as {base}/{h}.json."
+    },
+    "d": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Document id, the same for every version of one source document, at most 128 UTF-8 bytes. Private mode (default): lowercase hex of HMAC-SHA256(K, '{orgId}\\n{sourceSystem}\\n{sourceKey}'). Public mode: '{orgId}:{sourceSystem}:{sourceKey}'. sourceSystem is trimmed and lowercased; sourceKey is '{SourceSystemDocumentId}/{DocumentJournalId}', with '#1', '#2', ... appended in id order when several journals of one document share a DocumentJournalId."
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Version number, starting at 1 and incremented by 1 per version."
+    },
+    "p": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "h of the previous version (n - 1). Required when n > 1, absent when n = 1."
+    },
+    "a": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Optional HTTPS location hint. Never required for verification."
+    }
+  },
+  "if": {
+    "properties": { "n": { "const": 1 } }
+  },
+  "then": {
+    "not": { "required": ["p"] }
+  },
+  "else": {
+    "required": ["p"]
+  },
+  "propertyNames": {
+    "description": "Single-letter keys and keys starting with '_' are reserved for the standard. Tenant fields must not use them.",
+    "anyOf": [
+      { "enum": ["v", "h", "d", "n", "p", "a"] },
+      { "pattern": "^[^_].+$" }
+    ]
+  },
+  "additionalProperties": {
+    "type": "string",
+    "description": "Optional tenant-configured on-chain fields. Public and permanent."
+  }
+}

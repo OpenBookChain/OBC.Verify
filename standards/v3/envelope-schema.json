@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obc.dev/standards/v3/envelope-schema.json",
+  "title": "OBC v3 Off-Chain Envelope",
+  "description": "Envelope of every v3 off-chain document. data is validated separately against the schema named in schema (see types.json), except for tombstones (status 'voided'). The schema id's <type> part must equal type. Unknown top-level fields are ignored.",
+  "type": "object",
+  "required": ["version", "type", "schema", "data"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 3,
+      "description": "Off-chain document version. Always 3 for this standard."
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+$",
+      "description": "Document type, e.g. journal, invoice."
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^obc\\.[a-z0-9_-]+/[1-9][0-9]*$",
+      "description": "Schema id obc.<type>/<n>, e.g. obc.journal/2."
+    },
+    "links": {
+      "type": "array",
+      "description": "Related anchored records.",
+      "items": {
+        "$ref": "#/$defs/Link"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "voided"],
+      "description": "active (default) or voided (tombstone)."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Free text for a tombstone."
+    },
+    "sourceModifiedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the document last changed in the source system (ISO 8601 UTC)."
+    },
+    "data": {
+      "type": "object",
+      "description": "Document content. Validated against schema unless status is voided, in which case it may be empty."
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "Link": {
+      "type": "object",
+      "required": ["rel", "h"],
+      "properties": {
+        "rel": {
+          "type": "string",
+          "minLength": 1,
+          "description": "source (this record was derived from the target), derived (the target was derived from this record), or another registered value."
+        },
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$",
+          "description": "The target's document type, as a hint."
+        },
+        "h": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The target's off-chain hash."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,50 @@
+@page "/standards/v3"
+
+<PageTitle>OBC Standard v3</PageTitle>
+
+<div class="container py-5" style="max-width:860px">
+    <h1 class="h3 fw-bold mb-2">OBC Standard v3</h1>
+    <p class="text-secondary mb-4">
+        OBC v3 separates what was anchored from where it is stored, makes the off-chain document type-aware and links every version of a document on-chain.
+    </p>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <div class="mb-2">
+                <span class="badge bg-success me-2">Active</span>
+                <span class="fw-bold">obc-v3</span>
+                <span class="text-secondary ms-2">· introduced 2026</span>
+            </div>
+            <ul class="mb-0 text-secondary">
+                <li>Files are named <code>{h}.json</code>. Storage bases are listed in a location account derived from the publisher wallet, so a storage move is one transaction.</li>
+                <li>The off-chain document is an envelope (<code>type</code>, <code>schema</code>, <code>links</code>, <code>data</code>). Journals use <code>obc.journal/2</code>.</li>
+                <li>The memo carries <code>d</code>, <code>n</code> and <code>p</code>, so corrections and voids (tombstones) are visible on-chain. A per-document lookup key <code>k</code> lists every version with one call.</li>
+                <li>Records are published with the p-memo program; records from SPL Memo are accepted too.</li>
+                <li>The verifier reports who signed the record.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" target="_blank" rel="noopener noreferrer"
+           href="https://github.com/OpenBookChain/OBC.Verify/blob/master/standards/v3/README.md">
+            Open v3 Specification
+        </a>
+        <a class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer"
+           href="https://github.com/OpenBookChain/OBC.Verify/blob/master/standards/v3/onchain-schema.json">
+            On-chain Schema
+        </a>
+        <a class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer"
+           href="https://github.com/OpenBookChain/OBC.Verify/blob/master/standards/v3/location-schema.json">
+            Location Schema
+        </a>
+        <a class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer"
+           href="https://github.com/OpenBookChain/OBC.Verify/blob/master/standards/v3/envelope-schema.json">
+            Envelope Schema
+        </a>
+        <a class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer"
+           href="https://github.com/OpenBookChain/OBC.Verify/blob/master/standards/v3/types.json">
+            Document Types
+        </a>
+    </div>
+</div>

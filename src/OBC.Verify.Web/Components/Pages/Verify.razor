@@ -33,6 +33,12 @@
                         <option value="@SolanaNetwork.Testnet">Testnet</option>
                     </InputSelect>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Expected publisher wallet <span class="text-secondary fw-normal">(optional)</span></label>
+                    <InputText @bind-Value="_input.ExpectedSigner"
+                               class="form-control font-monospace"
+                               placeholder="The organisation's Solana wallet, if you know it" />
+                </div>
                 <button type="submit" class="btn btn-primary" disabled="@_loading">
                     @if (_loading)
                     {
@@ -54,7 +60,7 @@
             <div class="card-header @(_result.IsVerified ? "bg-success" : "bg-danger") text-white fw-bold d-flex align-items-center gap-2">
                 @if (_result.IsVerified)
                 {
-                    <span>✅ Verified</span>
+                    <span>✅ @VerifiedLabel(_result)</span>
                 }
                 else
                 {
@@ -67,6 +73,43 @@
                 {
                     <div class="alert alert-danger">@_result.ErrorMessage</div>
                 }
+                @if (_result.IsVerified && _result.IsVoided)
+                {
+                    <div class="alert alert-warning">
+                        This record is a <strong>tombstone</strong>: the document was voided@(string.IsNullOrEmpty(_result.VoidReason) ? "" : $" ({_result.VoidReason})").
+                    </div>
+                }
+                @if (_result.IsVerified && _result.Chain?.Latest is { } latest)
+                {
+                    <div class="alert alert-warning">
+                        This record is authentic but has been <strong>superseded by version @latest.Number</strong>
+                        (@VerificationService.FormatDate(latest.BlockTime))@(_result.Chain.LatestIsVoided == true ? ", which voids the document" : "").
+                        <a href="@ExplorerTxUrl(latest.Signature)" target="_blank" rel="noopener noreferrer">View the latest version</a>
+                    </div>
+                }
+                @if (_result.IsVerified && _result.Chain is { IsSuperseded: false, ScanComplete: false })
+                {
+                    <div class="alert alert-warning">
+                        <strong>History incomplete:</strong> the version history was only partly scanned, so a newer version of this document may exist.
+                    </div>
+                }
+                @if (_result.IsVerified && !_result.TypeRecognized)
+                {
+                    <div class="alert alert-info">
+                        Integrity verified, type not recognized: this verifier doesn't know the schema <code>@_result.SchemaId</code>.
+                    </div>
+                }
+                @if (_result.Warnings.Count > 0)
+                {
+                    <div class="alert alert-warning small">
+                        <ul class="mb-0 ps-3">
+                            @foreach (var warning in _result.Warnings)
+                            {
+                                <li class="text-break">@warning</li>
+                            }
+                        </ul>
+                    </div>
+                }
 
                 <table class="table table-sm table-borderless mb-0">
                     <tbody>
@@ -75,6 +118,41 @@
                             <tr>
                                 <th class="text-secondary" style="width:180px">Standard</th>
                                 <td>obc-v@(_result.StandardVersion)</td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(_result.Signer))
+                        {
+                            <tr>
+                                <th class="text-secondary">Signed by</th>
+                                <td><a href="@ExplorerAddressUrl(_result.Signer)" target="_blank" rel="noopener noreferrer" class="font-monospace text-break small">@_result.Signer</a></td>
+                            </tr>
+                        }
+                        @if (_result.BlockTime is { } blockTime)
+                        {
+                            <tr>
+                                <th class="text-secondary">Published</th>
+                                <td>@VerificationService.FormatDate(blockTime)</td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(_result.DocumentType))
+                        {
+                            <tr>
+                                <th class="text-secondary">Document type</th>
+                                <td>@_result.DocumentType <span class="text-secondary small font-monospace">(@_result.SchemaId)</span></td>
+                            </tr>
+                        }
+                        @if (_result.OnChainMemo?.VersionNumber is { } versionNumber)
+                        {
+                            <tr>
+                                <th class="text-secondary">Document version</th>
+                                <td>@versionNumber <span class="text-secondary small font-monospace text-break">(d = @_result.OnChainMemo.DocumentId)</span></td>
+                            </tr>
+                        }
+                        @if (!string.IsNullOrEmpty(_result.LocationAccount))
+                        {
+                            <tr>
+                                <th class="text-secondary">Location account</th>
+                                <td><a href="@ExplorerAddressUrl(_result.LocationAccount)" target="_blank" rel="noopener noreferrer" class="font-monospace text-break small">@_result.LocationAccount</a></td>
                             </tr>
                         }
                         @if (!string.IsNullOrEmpty(_result.Network))
@@ -109,13 +187,7 @@
                         }
                         @if (!string.IsNullOrEmpty(_result.TransactionId))
                         {
-                            var cluster = _result.Network switch
-                            {
-                                "Devnet"  => "?cluster=devnet",
-                                "Testnet" => "?cluster=testnet",
-                                _         => string.Empty
-                            };
-                            var explorerUrl = $"https://explorer.solana.com/tx/{_result.TransactionId}{cluster}";
+                            var explorerUrl = ExplorerTxUrl(_result.TransactionId);
                             <tr>
                                 <th class="text-secondary">Explorer</th>
                                 <td><a href="@explorerUrl" target="_blank" class="text-break small">@explorerUrl</a></td>
@@ -132,7 +204,7 @@
                 @foreach (var step in _result.Steps)
                 {
                     <li class="list-group-item d-flex gap-3 align-items-start py-2">
-                        <span class="mt-1">@(step.Passed ? "✅" : "❌")</span>
+                        <span class="mt-1">@(step.IsWarning ? "⚠️" : step.Passed ? "✅" : "❌")</span>
                         <div>
                             <div class="fw-semibold">@step.Name</div>
                             @if (!string.IsNullOrEmpty(step.Detail))
@@ -144,6 +216,79 @@
                 }
             </ul>
         </div>
+
+        @if (_result.Chain is { } chain)
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-semibold">Version History</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Version</th>
+                                <th>Published</th>
+                                <th>Hash</th>
+                                <th>Transaction</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var version in chain.Versions)
+                            {
+                                var isCurrent = version.Signature == _result.TransactionId;
+                                <tr class="@(isCurrent ? "table-active" : "")">
+                                    <td class="ps-3">
+                                        @version.Number
+                                        @if (isCurrent)
+                                        {
+                                            <span class="badge bg-secondary ms-1">this record</span>
+                                        }
+                                        @if (version == chain.Latest && chain.LatestIsVoided == true)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-1">voided</span>
+                                        }
+                                    </td>
+                                    <td class="small">@VerificationService.FormatDate(version.BlockTime)</td>
+                                    <td class="font-monospace small" title="@version.Hash">@version.Hash[..12]…</td>
+                                    <td class="small"><a href="@ExplorerTxUrl(version.Signature)" target="_blank" rel="noopener noreferrer" class="font-monospace">@version.Signature[..12]…</a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (!chain.ScanComplete)
+                {
+                    <div class="card-footer small text-secondary">History incomplete: only part of the history was scanned, so versions may be missing.</div>
+                }
+            </div>
+        }
+
+        @if (_result.Links.Count > 0)
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-semibold">Linked Records</div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var link in _result.Links)
+                    {
+                        <li class="list-group-item small">
+                            <span class="fw-semibold">@link.Rel</span>
+                            @if (!string.IsNullOrEmpty(link.Type))
+                            {
+                                <span class="text-secondary"> (@link.Type)</span>
+                            }
+                            <span class="font-monospace text-break ms-1">@link.Hash</span>
+                            @if (link.ResolvedUrl is not null)
+                            {
+                                <a href="@link.ResolvedUrl" target="_blank" rel="noopener noreferrer" class="ms-1">found</a>
+                            }
+                            else
+                            {
+                                <span class="text-secondary ms-1">not resolved</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
 
         @if (_result.IsVerified && !string.IsNullOrEmpty(_result.OffChainDocumentJson))
         {
@@ -169,7 +314,10 @@
         _result = null;
         try
         {
-            _result = await VerificationService.VerifyAsync(_input.TransactionId.Trim(), _input.Network);
+            _result = await VerificationService.VerifyAsync(
+                _input.TransactionId.Trim(),
+                _input.Network,
+                string.IsNullOrWhiteSpace(_input.ExpectedSigner) ? null : _input.ExpectedSigner.Trim());
         }
         finally
         {
@@ -177,9 +325,28 @@
         }
     }
 
+    private static string VerifiedLabel(VerificationResult result) =>
+        !result.TypeRecognized ? "Integrity verified — type not recognized"
+        : result.IsVoided ? "Verified — voided"
+        : result.Chain?.Latest is not null ? "Verified — superseded"
+        : result.Chain is { ScanComplete: false } ? "Verified — history incomplete"
+        : "Verified";
+
+    private string ClusterQuery => _result?.Network switch
+    {
+        "Devnet"  => "?cluster=devnet",
+        "Testnet" => "?cluster=testnet",
+        _         => string.Empty
+    };
+
+    private string ExplorerTxUrl(string signature) => $"https://explorer.solana.com/tx/{signature}{ClusterQuery}";
+
+    private string ExplorerAddressUrl(string address) => $"https://explorer.solana.com/address/{address}{ClusterQuery}";
+
     private sealed class VerifyInput
     {
         public string TransactionId { get; set; } = string.Empty;
         public SolanaNetwork Network { get; set; } = SolanaNetwork.MainnetBeta;
+        public string? ExpectedSigner { get; set; }
     }
 }

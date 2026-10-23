@@ -1,0 +1,19 @@
+{
+  "description": "Registry of the document schema ids known to the OBC v3 standard. A schema version, once published, never changes; new fields mean obc.<type>/<n+1>. Issue references are in the SHAliakbari/OBC repository: #47 is the v3 specification, #48 is support for more document types.",
+  "schemas": [
+    {
+      "id": "obc.journal/2",
+      "type": "journal",
+      "status": "active",
+      "schemaUrl": "types/journal/2/schema.json",
+      "description": "Journal content: the v2 off-chain journal document without its top-level version."
+    },
+    {
+      "id": "obc.invoice/1",
+      "type": "invoice",
+      "status": "reserved",
+      "schemaUrl": null,
+      "description": "Reserved for invoices. Drafted in SHAliakbari/OBC#48 (support for more document types)."
+    }
+  ]
+}

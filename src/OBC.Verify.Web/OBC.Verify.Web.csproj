@@ -12,4 +12,13 @@
     <PackageReference Include="Solnet.Rpc" Version="6.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The published v3 schemas are the verifier's source of truth -->
+    <EmbeddedResource Include="..\..\standards\v3\**\*.json" LogicalName="standards/v3/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OBC.Verify.Web.Tests" />
+  </ItemGroup>
+
 </Project>
