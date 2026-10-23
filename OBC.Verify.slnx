@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/OBC.Verify.Web/OBC.Verify.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OBC.Verify.Web.Tests/OBC.Verify.Web.Tests.csproj" />
+  </Folder>
 </Solution>

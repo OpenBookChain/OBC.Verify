@@ -1,9 +1,17 @@
 using OBC.Verify.Web.Components;
 using OBC.Verify.Web.Services;
+using OBC.Verify.Web.Services.Fetching;
+using OBC.Verify.Web.Services.Solana;
+using OBC.Verify.Web.Services.Standard;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHttpClient("verify");
+// Off-chain documents are downloaded from URLs found on-chain, so only through the SSRF-safe fetcher.
+builder.Services.AddSingleton(new SafeFetchOptions());
+builder.Services.AddHttpClient<IDocumentFetcher, SafeHttpFetcher>()
+    .ConfigurePrimaryHttpMessageHandler(SafeHttpFetcher.CreateHandler);
+builder.Services.AddSingleton<ISolanaReaderFactory, SolnetSolanaReaderFactory>();
+builder.Services.AddSingleton(builder.Configuration.GetSection("Verification:ChainScan").Get<ChainScanOptions>() ?? new ChainScanOptions());
 builder.Services.AddScoped<VerificationService>();
 
 // Add services to the container.

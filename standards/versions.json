@@ -74,6 +74,54 @@
     ],
     "backwardCompatible": true,
     "migrationType": "additive"
+  },
+  {
+    "version": "3",
+    "standardId": "obc-v3",
+    "status": "active",
+    "introduced": "2026",
+    "description": "Version 3 separates what from where: files are named by their hash and storage bases are published in an on-chain location account derived from the publisher wallet. The off-chain document is a type-aware envelope, and every version of a document is linked on-chain through d/n/p, including tombstones for voided documents.",
+    "onChainSchemaUrl": "standards/v3/onchain-schema.json",
+    "offChainSchemaUrl": "standards/v3/envelope-schema.json",
+    "locationSchemaUrl": "standards/v3/location-schema.json",
+    "typesUrl": "standards/v3/types.json",
+    "readmeUrl": "standards/v3/README.md",
+    "onChainFields": ["v", "h", "d", "n"],
+    "optionalOnChainFields": ["p", "a", "<tenant-configured-journal-fields>"],
+    "hashAlgorithm": "SHA-256",
+    "blockchains": {
+      "production": ["solana"],
+      "planned": ["ethereum"]
+    },
+    "fileStorages": {
+      "production": ["azure", "azureblob"],
+      "preview": ["ipfs"]
+    },
+    "locationAccount": {
+      "program": "recr1L3PCGKLbckBqMNcJhuuyU1zgo8nBhfLVsJNwr5",
+      "seed": "obc-meta",
+      "headerSize": 33,
+      "maxJsonBytes": 900
+    },
+    "memoPrograms": {
+      "publish": "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH",
+      "accepted": ["Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH", "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"]
+    },
+    "maxMemoBytes": 950,
+    "documentLookupKey": "sha256(utf8(\"obc-doc\") || P || utf8(d))",
+    "documentTypes": ["obc.journal/2"],
+    "fileNamingPattern": "{h}.json",
+    "newFeatures": [
+      "Storage bases in an on-chain location account (one transaction per storage move)",
+      "Hash-based file names",
+      "Type-aware off-chain envelope (type, schema, links, data)",
+      "On-chain version chain per document (d, n, p) with tombstones",
+      "Per-document lookup key k for listing versions",
+      "p-memo program for record memos",
+      "Signer reporting"
+    ],
+    "backwardCompatible": true,
+    "migrationType": "breaking"
   }
 ]
 

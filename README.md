@@ -25,6 +25,7 @@ Each published version of the OBC format is documented as a **standard**. Standa
 |---------|-------------|--------|---------|
 | [v1](standards/v1/README.md) | `obc-v1` | ✅ Active | Solana memo (v, h, a) + Azure Blob JSON |
 | [v2](standards/v2/README.md) | `obc-v2` | ✅ Active | Adds multi-dimensional accounting fields (`accountCode1..10`, `accountCodeName1..10`) |
+| [v3](standards/v3/README.md) | `obc-v3` | ✅ Active | Hash-named files, storage bases in an on-chain location account, type-aware envelope, on-chain version history (`d`/`n`/`p`, lookup key `k`), p-memo |
 
 See [`standards/versions.json`](standards/versions.json) for the machine-readable registry.
 
@@ -36,10 +37,11 @@ Given a **Solana transaction ID**:
 
 1. Look up the transaction on [Solana Explorer](https://explorer.solana.com/) or via the RPC API.
 2. Find the memo instruction and decode the UTF-8 data as JSON.
-3. Check `v` field to identify the standard version (e.g. `"1"` or `"2"`).
+3. Check `v` field to identify the standard version (`"1"`, `"2"` or `"3"`).
 4. Follow the verification steps in the corresponding standard:
    - [v1 Verification Algorithm](standards/v1/README.md#4-verification-algorithm)
    - [v2 Verification Protocol](standards/v2/README.md#4-verification-protocol)
+   - [v3 Verification Protocol](standards/v3/README.md#6-verification-protocol)
 
 ---
 
@@ -53,9 +55,18 @@ OBC.Verify/
 │   │   ├── README.md           ← Full v1 standard specification
 │   │   ├── onchain-schema.json ← JSON Schema for on-chain memo
 │   │   └── offchain-schema.json← JSON Schema for off-chain document
-│   └── v2/
-└── src/
-    └── OBC.Verify.Web/         ← Blazor verification dashboard (coming soon)
+│   ├── v2/
+│   └── v3/
+│       ├── README.md           ← Full v3 standard specification
+│       ├── onchain-schema.json ← JSON Schema for the on-chain memo
+│       ├── location-schema.json← JSON Schema for the location account content
+│       ├── envelope-schema.json← JSON Schema for the off-chain envelope
+│       ├── types.json          ← Registry of document schema ids
+│       └── types/journal/2/    ← obc.journal/2 data schema
+├── src/
+│   └── OBC.Verify.Web/         ← Blazor verification dashboard
+└── tests/
+    └── OBC.Verify.Web.Tests/   ← Verifier unit tests
 ```
 
 ---

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obc.dev/standards/v3/location-schema.json",
+  "title": "OBC v3 Location Account Content",
+  "description": "UTF-8 JSON stored in the publisher's location account (SPL Record account at CreateWithSeed(P, \"obc-meta\", recr1L3PCGKLbckBqMNcJhuuyU1zgo8nBhfLVsJNwr5)) after the 33-byte record header (version byte + authority). The JSON must be at most 900 bytes. Readers trim trailing 0x00 bytes before parsing.",
+  "type": "object",
+  "required": ["v", "s", "b"],
+  "properties": {
+    "v": {
+      "type": "integer",
+      "const": 1,
+      "description": "Location format version. Always 1."
+    },
+    "s": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sequence number, incremented on every update."
+    },
+    "b": {
+      "type": "array",
+      "maxItems": 10,
+      "description": "Storage bases, newest/preferred first. Files are at {base}/{h}.json.",
+      "items": {
+        "type": "string",
+        "anyOf": [
+          { "pattern": "^https://[^/?#@]+(/[^?#]*)?$" },
+          { "pattern": "^label:.+$" }
+        ],
+        "description": "An https:// base URL without credentials or query string, or an opaque label 'label:<name>' that verifiers resolve from local configuration."
+      }
+    },
+    "succ": {
+      "type": "string",
+      "description": "Base58 address of another location account to use instead (key rotation). Verifiers follow at most 5 hops and stop on cycles."
+    }
+  },
+  "additionalProperties": true
+}
