@@ -3,6 +3,8 @@
 @using OBC.Verify.Web.Models
 @using OBC.Verify.Web.Services
 @inject VerificationService VerificationService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>OBC Verify — Solana Record Verifier</PageTitle>
@@ -22,8 +24,12 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Solana Transaction ID</label>
                     <InputText @bind-Value="_input.TransactionId"
-                               class="form-control font-monospace"
+                               class="@($"form-control font-monospace{(_txError is null ? "" : " is-invalid")}")"
                                placeholder="e.g. 5U1q...Kj7R" />
+                    @if (_txError is not null)
+                    {
+                        <div class="invalid-feedback">@_txError</div>
+                    }
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Network</label>
@@ -65,6 +71,12 @@
                 else
                 {
                     <span>❌ Verification Failed</span>
+                }
+                @if (_shareUrl is not null)
+                {
+                    <button type="button" class="btn btn-sm btn-light ms-auto" @onclick="CopyShareLinkAsync">
+                        @(_linkCopied ? "Link copied" : "Copy link to this result")
+                    </button>
                 }
             </div>
             <div class="card-body">
@@ -303,25 +315,109 @@
 </div>
 
 @code {
+    private const string InvalidSignatureMessage =
+        "This doesn't look like a Solana transaction signature (a base58 string of about 88 characters).";
+
     private readonly VerifyInput _input = new();
     private VerificationResult? _result;
     private bool _loading;
+    private string? _txError;
+    private string? _shareUrl;
+    private bool _linkCopied;
+    private bool _autoRun;
+
+    /// <summary>Deep link: <c>/?tx=&lt;signature&gt;&amp;network=&lt;network&gt;</c> pre-fills the form and verifies once.</summary>
+    [SupplyParameterFromQuery(Name = VerifyLink.TxParameter)]
+    public string? Tx { get; set; }
+
+    [SupplyParameterFromQuery(Name = VerifyLink.NetworkParameter)]
+    public string? NetworkQuery { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(Tx)) return;
+
+        _input.TransactionId = Tx.Trim();
+        // An unknown network is ignored and the default is used.
+        _input.Network = VerifyLink.TryParseNetwork(NetworkQuery, out var network) ? network : VerifyLink.DefaultNetwork;
+
+        if (VerifyLink.IsValidSignature(_input.TransactionId))
+        {
+            _autoRun = true;
+        }
+        else
+        {
+            _txError = InvalidSignatureMessage;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Runs only once the circuit is interactive, never during prerendering.
+        if (!firstRender || !_autoRun) return;
+        _autoRun = false;
+
+        var verification = RunVerificationAsync();
+        StateHasChanged(); // show the spinner while the deep-linked verification runs
+        await verification;
+        StateHasChanged();
+    }
 
     private async Task RunVerificationAsync()
     {
         if (string.IsNullOrWhiteSpace(_input.TransactionId)) return;
+        var transactionId = _input.TransactionId.Trim();
+        if (!VerifyLink.IsValidSignature(transactionId))
+        {
+            _txError = InvalidSignatureMessage;
+            return;
+        }
+
+        _txError = null;
         _loading = true;
         _result = null;
+        _shareUrl = null;
+        _linkCopied = false;
+        var network = _input.Network;
         try
         {
             _result = await VerificationService.VerifyAsync(
-                _input.TransactionId.Trim(),
-                _input.Network,
+                transactionId,
+                network,
                 string.IsNullOrWhiteSpace(_input.ExpectedSigner) ? null : _input.ExpectedSigner.Trim());
         }
         finally
         {
             _loading = false;
+        }
+
+        // Make the result shareable: only the public signature and the network, never the wallet.
+        _shareUrl = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            [VerifyLink.TxParameter] = transactionId,
+            [VerifyLink.NetworkParameter] = VerifyLink.ToQueryValue(network)
+        });
+        try
+        {
+            await JS.InvokeVoidAsync("obcVerify.replaceUrl", _shareUrl);
+        }
+        catch (JSException)
+        {
+            // The address bar just isn't updated; the copy link still works.
+        }
+    }
+
+    private async Task CopyShareLinkAsync()
+    {
+        if (_shareUrl is null) return;
+        try
+        {
+            await JS.InvokeVoidAsync("obcVerify.copyText", _shareUrl);
+            _linkCopied = true;
+        }
+        catch (JSException)
+        {
+            // Clipboard access denied; the address bar already holds the link.
         }
     }
 
@@ -346,7 +442,7 @@
     private sealed class VerifyInput
     {
         public string TransactionId { get; set; } = string.Empty;
-        public SolanaNetwork Network { get; set; } = SolanaNetwork.MainnetBeta;
+        public SolanaNetwork Network { get; set; } = VerifyLink.DefaultNetwork;
         public string? ExpectedSigner { get; set; }
     }
 }

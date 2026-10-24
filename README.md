@@ -45,6 +45,27 @@ Given a **Solana transaction ID**:
 
 ---
 
+## Linking to a Verification
+
+The verifier at [verify.openbookchain.com](https://verify.openbookchain.com/) accepts a deep link that pre-fills the form and runs the verification once on load:
+
+```
+https://verify.openbookchain.com/?tx=<transaction signature>&network=<network>
+```
+
+| Parameter | Required | Values |
+|-----------|----------|--------|
+| `tx`      | yes | The Solana transaction signature (base58, 64 bytes) |
+| `network` | no  | `mainnet-beta` (default; `mainnet` is accepted too), `devnet`, `testnet`. Case-insensitive |
+
+Example: [`/?tx=2dkr9oBK…BP95&network=devnet`](https://verify.openbookchain.com/?tx=2dkr9oBKGD4UkzvkFc8626VTfbVcn8dBUuYFQhrsRtYWhUVzMEfZAAmte9F62vropCVvybCEEn8FWLUUwpkpBP95&network=devnet)
+
+- An unknown `network` is ignored and Mainnet Beta is used.
+- A malformed `tx` is pre-filled but not verified; the form shows why.
+- After every verification the address bar is updated to this format, and the result has a **Copy link to this result** button, so any result can be shared. The expected publisher wallet is never put in the URL.
+
+---
+
 ## Repository Structure
 
 ```
