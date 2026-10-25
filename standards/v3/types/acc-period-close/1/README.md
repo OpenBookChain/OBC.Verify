@@ -146,7 +146,7 @@ Verified like any v3 record (v3 section 6): integrity, signer, envelope, schema 
 Input: the publisher wallet P, off-chain access (storage bases, or a map for the location account's `label:` bases) and, optionally, the transaction of the latest close.
 
 1. **Collect periods.** Read P's history (`getSignaturesForAddress(P)`) and keep the valid v3 memos signed by P. Fetch each record's file, check its hash and read its type, status and booking date (a tombstone keeps the date of the version it voids). Group the period records by `d`; each period's latest version gives its state. Starting from the latest close, follow `previous-period` links back.
-2. **Check coverage.** Ranges must not overlap, and each period must start the day after the previous one ends: otherwise **period gap** or **period overlap**. A link to a period that doesn't end the day before is a **broken link**.
+2. **Check coverage.** Ranges must not overlap, and each period must start the day after the previous one ends: otherwise **period gap** or **period overlap**. A **broken link** is a link to a record that isn't one of P's period records, to a period that doesn't end the day before, or to a version that isn't a close, and a missing link on any period but the first.
 3. **Check each close.** Its data rules (5.1) and versioning rules (3.3). Every member must be a record signed by P with the listed `n` and `h`, published before the close, and its file must have the listed type, status and booking date, inside the range: otherwise **broken member**.
 4. **Classify every record** booked in a period, by slot order against the period's versions:
 

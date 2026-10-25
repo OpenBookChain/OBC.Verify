@@ -439,7 +439,17 @@ public class PeriodAuditService
             period.Period.InLinkChain = true;
 
             var link = current.Close?.PreviousPeriodHash;
-            if (link is null) break;
+            if (link is null)
+            {
+                // Only the publisher's first period has no link (section 3.3).
+                var earlier = periods.FirstOrDefault(p => p.Period.Status != PeriodAuditStatus.Voided && p.Period.From < period.Period.From);
+                if (current.Close is not null && earlier is not null)
+                {
+                    report.ChainFindings.Add(Finding(AuditFindingKind.BrokenLink,
+                        $"Period {period.Period.Range} (version {current.Number}) has no previous-period link, but period {earlier.Period.Range} comes before it.", current.Signature));
+                }
+                break;
+            }
 
             if (!byHash.TryGetValue(link, out var target) || target.Type != PeriodClose.Type)
             {
@@ -449,11 +459,22 @@ public class PeriodAuditService
                 break;
             }
 
-            var previous = byDoc[target.DocumentId].Period;
+            var previousPeriod = byDoc[target.DocumentId];
+            var previous = previousPeriod.Period;
             if (period.Period.From is { } from && previous.To is { } to && to.AddDays(1) != from)
             {
                 report.ChainFindings.Add(Finding(AuditFindingKind.BrokenLink,
                     $"Period {period.Period.Range} links to period {previous.Range}, which doesn't end the day before it starts.", current.Signature));
+            }
+
+            // The link must name a close. Otherwise keep following from that period's latest close.
+            if (target.Close is not { IsClosed: true })
+            {
+                var what = target.IsVoided ? "a tombstone" : target.Close is null ? "unreadable" : $"a {target.Close.State} version";
+                report.ChainFindings.Add(Finding(AuditFindingKind.BrokenLink,
+                    $"Period {period.Period.Range} links to version {target.Number} of period {previous.Range}, which is {what}, not a close.", current.Signature));
+                target = previousPeriod.Timeline.LastOrDefault(v => v.Close is { IsClosed: true });
+                if (target is null) break;
             }
             current = target;
         }

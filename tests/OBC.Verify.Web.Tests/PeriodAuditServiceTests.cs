@@ -286,6 +286,40 @@ public class PeriodAuditServiceTests
     }
 
     [Fact]
+    public async Task Period_without_a_link_after_the_first_is_broken()
+    {
+        Close(Sep1, Sep30, [Journal("2026-09-03")]);
+        var oct = Close(Oct1, Oct31, [Journal("2026-10-03")]);
+        var nov = Close("2026-11-01", "2026-11-30", [Journal("2026-11-03")], previousPeriod: oct);
+
+        var report = await Audit(nov.Sig);
+
+        var finding = Assert.Single(report.ChainFindings);
+        Assert.Equal(AuditFindingKind.BrokenLink, finding.Kind);
+        Assert.Contains("2026-10-01 – 2026-10-31 (version 1) has no previous-period link", finding.Detail);
+        Assert.Equal(oct.Sig, finding.Signature);
+        Assert.False(report.AllComplete);
+    }
+
+    [Fact]
+    public async Task Link_to_a_reopen_is_broken_and_followed_to_the_latest_close()
+    {
+        var a = Journal("2026-09-03");
+        var s1 = Close(Sep1, Sep30, [a]);
+        var s2 = Reopen(Sep1, Sep30, s1);
+        var oct = Close(Oct1, Oct31, [Journal("2026-10-03")], previousPeriod: s2);
+        Close(Sep1, Sep30, [a], previousVersion: s2);
+
+        var report = await Audit(oct.Sig);
+
+        var finding = Assert.Single(report.ChainFindings);
+        Assert.Contains("links to version 2 of period 2026-09-01 – 2026-09-30, which is a reopened version, not a close", finding.Detail);
+        Assert.All(report.Periods, p => Assert.True(p.InLinkChain));
+        Assert.All(report.Periods, p => Assert.Equal(PeriodAuditStatus.Complete, p.Status));
+        Assert.False(report.AllComplete);
+    }
+
+    [Fact]
     public async Task Voided_period_counts_as_never_closed()
     {
         var a = Journal("2026-09-03");
