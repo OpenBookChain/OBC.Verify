@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using OBC.Verify.Web.Services.Standard;
 
 namespace OBC.Verify.Web.Models;
 
@@ -69,6 +70,8 @@ public class VerificationResult
     public bool IsVoided { get; set; }
     public string? VoidReason { get; set; }
     public List<RecordLink> Links { get; set; } = new();
+    /// <summary>Set for an <c>acc-period-close</c> record.</summary>
+    public PeriodClose? PeriodClose { get; set; }
 
     // v3 version chain
     public VersionChainReport? Chain { get; set; }

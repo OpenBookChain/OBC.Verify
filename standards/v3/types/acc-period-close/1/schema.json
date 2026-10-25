@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obc.dev/standards/v3/types/acc-period-close/1/schema.json",
+  "title": "OBC accounting period close, schema obc.acc-period-close/1",
+  "description": "Schema for the data member of a v3 envelope with type \"acc-period-close\" and schema \"obc.acc-period-close/1\". A closed version must have count, root and members; a reopened version has none of them. Members are sorted by d in UTF-8 byte order, count equals the number of members and root is their RFC 6962 Merkle root (see README.md next to this file). Verifiers check these rules in code. Unknown fields are ignored.",
+  "type": "object",
+  "required": ["from", "to", "state"],
+  "properties": {
+    "from": {
+      "type": "string",
+      "format": "date",
+      "description": "First day of the period (inclusive, ISO 8601 date). Part of the period's document id."
+    },
+    "to": {
+      "type": "string",
+      "format": "date",
+      "description": "Last day of the period (inclusive, ISO 8601 date). Part of the period's document id."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["closed", "reopened"],
+      "description": "closed or reopened. Version 1 is always closed, then versions alternate."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Free text, e.g. \"Month-end close\"."
+    },
+    "closedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the user confirmed the action. Informational; the block time is authoritative."
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of entries in members. Only for a close."
+    },
+    "root": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "RFC 6962 Merkle root of members, lowercase hex. Only for a close."
+    },
+    "members": {
+      "type": "array",
+      "description": "Every record booked in the period, at its latest finalized version when the close was published, sorted by d (UTF-8 byte order), one entry per d. Only for a close.",
+      "items": {
+        "$ref": "#/$defs/Member"
+      }
+    },
+    "totals": {
+      "type": "array",
+      "description": "Optional per-currency debit/credit sums of the active members, as decimal strings.",
+      "items": {
+        "$ref": "#/$defs/Total"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "Member": {
+      "type": "object",
+      "required": ["d", "n", "h", "type", "date"],
+      "properties": {
+        "d": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The member's document id."
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The member's latest finalized version when the close was published."
+        },
+        "h": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "That version's off-chain hash."
+        },
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$",
+          "description": "The member's document type."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "The member's booking date."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "voided"],
+          "description": "voided when version n is a tombstone. Voided documents stay members."
+        }
+      },
+      "additionalProperties": true
+    },
+    "Total": {
+      "type": "object",
+      "required": ["currency", "debit", "credit"],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "debit": {
+          "type": "string",
+          "pattern": "^-?[0-9]+([.][0-9]+)?$"
+        },
+        "credit": {
+          "type": "string",
+          "pattern": "^-?[0-9]+([.][0-9]+)?$"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

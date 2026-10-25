@@ -109,7 +109,7 @@
     },
     "maxMemoBytes": 950,
     "documentLookupKey": "sha256(utf8(\"obc-doc\") || P || utf8(d))",
-    "documentTypes": ["obc.journal/2"],
+    "documentTypes": ["obc.journal/2", "obc.acc-period-close/1"],
     "fileNamingPattern": "{h}.json",
     "newFeatures": [
       "Storage bases in an on-chain location account (one transaction per storage move)",

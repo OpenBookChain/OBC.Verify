@@ -17,7 +17,8 @@ public sealed record FetchResult(bool Success, byte[]? Content, string? FinalUrl
 
 public sealed class SafeFetchOptions
 {
-    public long MaxBytes { get; set; } = 5 * 1024 * 1024;
+    /// <summary>50 MB fits a period close of about 250,000 members (acc-period-close, section 9).</summary>
+    public long MaxBytes { get; set; } = 50 * 1024 * 1024;
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(15);
     public int MaxRedirects { get; set; } = 3;
 }

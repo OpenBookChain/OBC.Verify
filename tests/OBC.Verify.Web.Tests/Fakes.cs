@@ -16,7 +16,8 @@ internal sealed class FakeSolanaReader : ISolanaReader, ISolanaReaderFactory
     public Dictionary<string, ChainTransaction> Transactions { get; } = new();
     public Dictionary<string, ChainAccount> Accounts { get; } = new();
     public Dictionary<string, List<ChainSignature>> History { get; } = new();
-    public int TransactionReads { get; private set; }
+    private int _transactionReads;
+    public int TransactionReads => _transactionReads;
 
     public string RpcUrl => "fake://rpc";
 
@@ -59,7 +60,7 @@ internal sealed class FakeSolanaReader : ISolanaReader, ISolanaReaderFactory
 
     public Task<ChainTransaction?> GetTransactionAsync(string signature, CancellationToken ct = default)
     {
-        TransactionReads++;
+        Interlocked.Increment(ref _transactionReads);
         return Task.FromResult(Transactions.GetValueOrDefault(signature));
     }
 
@@ -81,7 +82,7 @@ internal sealed class FakeFetcher : IDocumentFetcher
 
     public Task<FetchResult> FetchAsync(string url, CancellationToken ct = default)
     {
-        Requests.Add(url);
+        lock (Requests) Requests.Add(url); // the period audit fetches in parallel
         return Task.FromResult(Files.TryGetValue(url, out var content)
             ? FetchResult.Ok(content, url)
             : FetchResult.Fail($"HTTP 404 Not Found ({url})."));

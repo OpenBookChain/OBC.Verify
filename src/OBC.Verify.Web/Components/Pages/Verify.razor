@@ -210,6 +210,110 @@
             </div>
         </div>
 
+        @if (_result.IsVerified && _result.PeriodClose is { } period)
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-semibold d-flex align-items-center gap-2">
+                    <span>Accounting Period</span>
+                    <span class="badge @(period.IsClosed ? "bg-success" : "bg-warning text-dark")">@period.State</span>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="text-secondary" style="width:180px">Period</th>
+                                <td>@period.Range</td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(period.Reason))
+                            {
+                                <tr>
+                                    <th class="text-secondary">Reason</th>
+                                    <td class="text-break">@period.Reason</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(period.ClosedAt))
+                            {
+                                <tr>
+                                    <th class="text-secondary">Confirmed at</th>
+                                    <td>@period.ClosedAt <span class="text-secondary small">(informational; the block time is authoritative)</span></td>
+                                </tr>
+                            }
+                            @if (period.IsClosed)
+                            {
+                                <tr>
+                                    <th class="text-secondary">Records</th>
+                                    <td>@period.Count?.ToString("N0") <span class="text-success small">✓ recounted</span></td>
+                                </tr>
+                                <tr>
+                                    <th class="text-secondary">Merkle root</th>
+                                    <td class="font-monospace text-break small">@period.Root <span class="text-success">✓ recomputed</span></td>
+                                </tr>
+                            }
+                            <tr>
+                                <th class="text-secondary">Previous period</th>
+                                <td class="small">
+                                    @if (period.PreviousPeriodHash is null)
+                                    {
+                                        <span class="text-secondary">none (the publisher's first period)</span>
+                                    }
+                                    else
+                                    {
+                                        var previousLink = _result.Links.FirstOrDefault(l => l.Hash == period.PreviousPeriodHash);
+                                        <span class="font-monospace text-break">@period.PreviousPeriodHash</span>
+                                        @if (previousLink?.ResolvedUrl is { } previousUrl)
+                                        {
+                                            <a href="@previousUrl" target="_blank" rel="noopener noreferrer" class="ms-1">found</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-secondary ms-1">not resolved</span>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-secondary small mt-3 mb-0">
+                        This record proves what the publisher declared about the period. Whether the period really is complete
+                        (no late, changed or omitted records) is checked with the <a href="audit">period audit</a>, which needs access to the off-chain files
+                        and is usually run on your own copy of the verifier.
+                    </p>
+                </div>
+                @if (period.Members is { Count: > 0 } members)
+                {
+                    <div class="card-body p-0 border-top" style="max-height:320px;overflow:auto">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-3">Date</th>
+                                    <th>Type</th>
+                                    <th>Document</th>
+                                    <th>Version</th>
+                                    <th>Hash</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var member in members.Take(MaxMembersShown))
+                                {
+                                    <tr>
+                                        <td class="ps-3 small text-nowrap">@member.Date</td>
+                                        <td class="small">@member.Type@(member.IsVoided ? " (voided)" : "")</td>
+                                        <td class="font-monospace small" title="@member.DocumentId">@Short(member.DocumentId)</td>
+                                        <td class="small">@member.Number</td>
+                                        <td class="font-monospace small" title="@member.Hash">@Short(member.Hash)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (members.Count > MaxMembersShown)
+                    {
+                        <div class="card-footer small text-secondary">Showing the first @MaxMembersShown.ToString("N0") of @members.Count.ToString("N0") members. The off-chain document below lists them all.</div>
+                    }
+                }
+            </div>
+        }
+
         <div class="card shadow-sm mb-4">
             <div class="card-header fw-semibold">Verification Steps</div>
             <ul class="list-group list-group-flush">
@@ -307,14 +411,24 @@
             <div class="card shadow-sm">
                 <div class="card-header fw-semibold">Off-Chain Document</div>
                 <div class="card-body p-0">
-                    <pre class="m-0 p-3 small" style="max-height:400px;overflow:auto;background:#f8f9fa">@_result.OffChainDocumentJson</pre>
+                    <pre class="m-0 p-3 small" style="max-height:400px;overflow:auto;background:#f8f9fa">@(_result.OffChainDocumentJson.Length > MaxDocumentChars ? _result.OffChainDocumentJson[..MaxDocumentChars] : _result.OffChainDocumentJson)</pre>
                 </div>
+                @if (_result.OffChainDocumentJson.Length > MaxDocumentChars)
+                {
+                    <div class="card-footer small text-secondary">
+                        Showing the first @MaxDocumentChars.ToString("N0") of @_result.OffChainDocumentJson.Length.ToString("N0") characters.
+                        <a href="@_result.FileUrl" target="_blank" rel="noopener noreferrer">Open the full document</a>
+                    </div>
+                }
             </div>
         }
     }
 </div>
 
 @code {
+    private const int MaxMembersShown = 500;
+    private const int MaxDocumentChars = 200_000;
+
     private const string InvalidSignatureMessage =
         "This doesn't look like a Solana transaction signature (a base58 string of about 88 characters).";
 
@@ -427,6 +541,8 @@
         : result.Chain?.Latest is not null ? "Verified — superseded"
         : result.Chain is { ScanComplete: false } ? "Verified — history incomplete"
         : "Verified";
+
+    private static string Short(string value) => value.Length > 16 ? $"{value[..12]}…" : value;
 
     private string ClusterQuery => _result?.Network switch
     {

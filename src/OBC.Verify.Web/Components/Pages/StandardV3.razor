@@ -21,6 +21,7 @@
                 <li>The memo carries <code>d</code>, <code>n</code> and <code>p</code>, so corrections and voids (tombstones) are visible on-chain. A per-document lookup key <code>k</code> lists every version with one call.</li>
                 <li>Records are published with the p-memo program; records from SPL Memo are accepted too.</li>
                 <li>The verifier reports who signed the record.</li>
+                <li>Accounting periods are closed with <code>obc.acc-period-close/1</code> records that list every member with a count and Merkle root. The <a href="audit">period audit</a> checks a publisher's periods are complete.</li>
             </ul>
         </div>
     </div>
@@ -45,6 +46,10 @@
         <a class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer"
            href="https://github.com/OpenBookChain/OBC.Verify/blob/master/standards/v3/types.json">
             Document Types
+        </a>
+        <a class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer"
+           href="https://github.com/OpenBookChain/OBC.Verify/blob/master/standards/v3/types/acc-period-close/1/README.md">
+            Period Close Type
         </a>
     </div>
 </div>

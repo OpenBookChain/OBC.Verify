@@ -1,0 +1,328 @@
+@page "/audit"
+@using OBC.Verify.Web.Models
+@using OBC.Verify.Web.Services
+@implements IDisposable
+@inject PeriodAuditService AuditService
+@rendermode InteractiveServer
+
+<PageTitle>Period Audit — OBC</PageTitle>
+
+<div class="container py-5" style="max-width:900px">
+    <div class="mb-4">
+        <h1 class="h3 fw-bold">Accounting Period Audit</h1>
+        <p class="text-secondary">
+            Rebuilds a publisher's books period by period from their <code>acc-period-close</code> records and checks
+            that nothing was added, changed or left out after a close. It needs access to the off-chain files, reads every
+            record the publisher signed and downloads every file, so it can take a while.
+        </p>
+    </div>
+
+    @if (!AuditService.IsEnabled)
+    {
+        <div class="alert alert-info">
+            The period audit is turned off on this server: it reads every record of a publisher from Solana and downloads every file,
+            which is too heavy for a shared public verifier. Run the verifier yourself with <code>Verification:Audit:Enabled</code> set to
+            <code>true</code> (see the <a href="https://github.com/OpenBookChain/OBC.Verify#accounting-period-audit" target="_blank" rel="noopener noreferrer">README</a>).
+        </div>
+    }
+    else
+    {
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <EditForm Model="_input" OnValidSubmit="RunAuditAsync" FormName="audit-form">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Publisher wallet</label>
+                    <InputText @bind-Value="_input.Publisher" class="form-control font-monospace" placeholder="The organisation's Solana wallet (P)" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Network</label>
+                    <InputSelect @bind-Value="_input.Network" class="form-select">
+                        <option value="@SolanaNetwork.MainnetBeta">Mainnet Beta</option>
+                        <option value="@SolanaNetwork.Devnet">Devnet</option>
+                        <option value="@SolanaNetwork.Testnet">Testnet</option>
+                    </InputSelect>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Latest close transaction <span class="text-secondary fw-normal">(optional)</span></label>
+                    <InputText @bind-Value="_input.LatestClose" class="form-control font-monospace" placeholder="Transaction of the latest close; otherwise the period that ends last is used" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Storage bases <span class="text-secondary fw-normal">(optional, one per line)</span></label>
+                    <InputTextArea @bind-Value="_input.Bases" rows="2" class="form-control font-monospace small"
+                                   placeholder="https://docs.example.com/obc — tried after the bases in the publisher's location account" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Label map <span class="text-secondary fw-normal">(optional, one per line)</span></label>
+                    <InputTextArea @bind-Value="_input.Labels" rows="2" class="form-control font-monospace small"
+                                   placeholder="label:vault-1 = https://vault.example.com/obc" />
+                    <div class="form-text">Resolves the opaque <code>label:</code> bases of the location account. Files are still only fetched over public https.</div>
+                </div>
+                @if (_inputError is not null)
+                {
+                    <div class="alert alert-danger small">@_inputError</div>
+                }
+                <button type="submit" class="btn btn-primary" disabled="@_running">
+                    @if (_running)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Auditing…</span>
+                    }
+                    else
+                    {
+                        <span>Run audit</span>
+                    }
+                </button>
+                @if (_running)
+                {
+                    <button type="button" class="btn btn-outline-secondary ms-2" @onclick="Cancel">Cancel</button>
+                    <span class="text-secondary small ms-2">@_progress</span>
+                }
+            </EditForm>
+        </div>
+    </div>
+    }
+
+    @if (_report is { } report)
+    {
+        @if (report.Error is not null)
+        {
+            <div class="alert alert-danger">@report.Error</div>
+        }
+        else
+        {
+            <div class="alert @(report.AllComplete && report.HistoryComplete && report.UnreadRecords == 0 ? "alert-success" : report.AllComplete ? "alert-warning" : "alert-danger")">
+                @if (report.AllComplete)
+                {
+                    <strong>All closed periods are complete.</strong>
+                }
+                else
+                {
+                    <strong>Completeness check failed or periods are open.</strong>
+                }
+                <span class="small d-block mt-1">
+                    @report.RecordCount.ToString("N0") records signed by the publisher, @report.ScannedSignatures.ToString("N0") transactions scanned@(report.HistoryComplete ? "" : " (history incomplete)").
+                    A failed check doesn't change the integrity of any single record.
+                </span>
+            </div>
+        }
+
+        @if (report.Warnings.Count > 0)
+        {
+            <div class="alert alert-warning small">
+                <ul class="mb-0 ps-3">
+                    @foreach (var warning in report.Warnings)
+                    {
+                        <li class="text-break">@warning</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (report.ChainFindings.Count > 0)
+        {
+            <div class="card shadow-sm mb-4 border-danger">
+                <div class="card-header fw-semibold">Period Chain</div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var finding in report.ChainFindings)
+                    {
+                        <li class="list-group-item small"><span class="fw-semibold">❌ @finding.Title:</span> <span class="text-break">@finding.Detail</span></li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (report.Periods.Count > 0)
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-semibold">Periods</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Period</th>
+                                <th>Result</th>
+                                <th>Members</th>
+                                <th>Closed / reopened</th>
+                                <th>Findings</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var period in report.Periods)
+                            {
+                                <tr>
+                                    <td class="ps-3 text-nowrap">
+                                        @period.Range
+                                        @if (!period.InLinkChain && period.Status != PeriodAuditStatus.Voided)
+                                        {
+                                            <span class="badge bg-light text-dark border ms-1" title="Not reached through previous-period links">unlinked</span>
+                                        }
+                                    </td>
+                                    <td><span class="badge @StatusClass(period.Status)">@StatusLabel(period.Status)</span></td>
+                                    <td>@(period.MemberCount?.ToString("N0") ?? "—")</td>
+                                    <td>@period.TimesClosed / @period.TimesReopened</td>
+                                    <td>@period.Findings.Count</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @foreach (var period in report.Periods)
+            {
+                <details class="card shadow-sm mb-3" open="@(period.Status == PeriodAuditStatus.Failed)">
+                    <summary class="card-header fw-semibold d-flex align-items-center gap-2" style="cursor:pointer">
+                        <span>@period.Range</span>
+                        <span class="badge @StatusClass(period.Status)">@StatusLabel(period.Status)</span>
+                        <span class="text-secondary small font-monospace text-truncate ms-auto" title="@period.DocumentId">d = @period.DocumentId</span>
+                    </summary>
+                    @if (period.Findings.Count > 0)
+                    {
+                        <ul class="list-group list-group-flush border-bottom">
+                            @foreach (var finding in period.Findings.Take(MaxFindingsShown))
+                            {
+                                <li class="list-group-item small">
+                                    <span class="fw-semibold">❌ @finding.Title:</span> <span class="text-break">@finding.Detail</span>
+                                    @if (finding.Signature is not null)
+                                    {
+                                        <a href="@VerifyUrl(finding.Signature)" class="ms-1">verify</a>
+                                    }
+                                </li>
+                            }
+                            @if (period.Findings.Count > MaxFindingsShown)
+                            {
+                                <li class="list-group-item small text-secondary">… and @((period.Findings.Count - MaxFindingsShown).ToString("N0")) more findings.</li>
+                            }
+                        </ul>
+                    }
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Version</th>
+                                <th>State</th>
+                                <th>Published</th>
+                                <th>Members</th>
+                                <th>Reason</th>
+                                <th>Transaction</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var version in period.Versions)
+                            {
+                                <tr>
+                                    <td class="ps-3">@version.Number</td>
+                                    <td>@(version.State ?? "unreadable")</td>
+                                    <td class="small">@VerificationService.FormatDate(version.BlockTime)</td>
+                                    <td>@(version.Count?.ToString("N0") ?? "—")</td>
+                                    <td class="small text-break">@version.Reason</td>
+                                    <td class="small"><a href="@VerifyUrl(version.Signature)" class="font-monospace">@version.Signature[..Math.Min(12, version.Signature.Length)]…</a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </details>
+            }
+        }
+
+        @if (report.Bases.Count > 0)
+        {
+            <p class="small text-secondary">Files fetched from: @string.Join(", ", report.Bases)</p>
+        }
+    }
+</div>
+
+@code {
+    private const int MaxFindingsShown = 200;
+
+    private readonly AuditInput _input = new();
+    private PeriodAuditReport? _report;
+    private bool _running;
+    private string? _progress;
+    private string? _inputError;
+    private SolanaNetwork _network;
+    private CancellationTokenSource? _cts;
+
+    private async Task RunAuditAsync()
+    {
+        _inputError = null;
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var line in Lines(_input.Labels))
+        {
+            var at = line.IndexOf('=');
+            if (at <= 0)
+            {
+                _inputError = $"Label map line '{line}' is not 'label:name = https://…'.";
+                return;
+            }
+            labels[line[..at].Trim()] = line[(at + 1)..].Trim();
+        }
+
+        _running = true;
+        _report = null;
+        _network = _input.Network;
+        _cts = new CancellationTokenSource();
+        var progress = new Progress<string>(message =>
+        {
+            _progress = message;
+            _ = InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            _report = await AuditService.AuditAsync(new PeriodAuditRequest
+            {
+                Network = _input.Network,
+                Publisher = _input.Publisher,
+                LatestCloseSignature = string.IsNullOrWhiteSpace(_input.LatestClose) ? null : _input.LatestClose.Trim(),
+                ExtraBases = Lines(_input.Bases).ToList(),
+                Labels = labels
+            }, progress, _cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _inputError = "The audit was cancelled.";
+        }
+        finally
+        {
+            _running = false;
+            _progress = null;
+            _cts.Dispose();
+            _cts = null;
+        }
+    }
+
+    private void Cancel() => _cts?.Cancel();
+
+    public void Dispose() => _cts?.Cancel();
+
+    private static IEnumerable<string> Lines(string? text) =>
+        (text ?? string.Empty).Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0);
+
+    private string VerifyUrl(string signature) =>
+        $"/?{VerifyLink.TxParameter}={Uri.EscapeDataString(signature)}&{VerifyLink.NetworkParameter}={VerifyLink.ToQueryValue(_network)}";
+
+    private static string StatusLabel(PeriodAuditStatus status) => status switch
+    {
+        PeriodAuditStatus.Complete => "complete",
+        PeriodAuditStatus.Failed => "failed",
+        PeriodAuditStatus.Open => "open",
+        _ => "voided"
+    };
+
+    private static string StatusClass(PeriodAuditStatus status) => status switch
+    {
+        PeriodAuditStatus.Complete => "bg-success",
+        PeriodAuditStatus.Failed => "bg-danger",
+        PeriodAuditStatus.Open => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    private sealed class AuditInput
+    {
+        public string Publisher { get; set; } = string.Empty;
+        public SolanaNetwork Network { get; set; } = SolanaNetwork.MainnetBeta;
+        public string? LatestClose { get; set; }
+        public string? Bases { get; set; }
+        public string? Labels { get; set; }
+    }
+}
