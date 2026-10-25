@@ -2,7 +2,7 @@
 
 **OBC.Verify** is the open-source verification portal and standards repository for [Open Book Chain (OBC)](https://openbookchain.com/).
 
-It allows anyone to independently verify that a certified financial journal record published by OBC has not been tampered with, without needing access to the OBC platform itself.
+It allows anyone to independently verify that a certified financial journal record published by OBC has not been tampered with, without needing access to the OBC platform itself. An auditor with access to the off-chain files can also check that a publisher's closed accounting periods are complete.
 
 ---
 
@@ -66,6 +66,33 @@ Example: [`/?tx=2dkr9oBK…BP95&network=devnet`](https://verify.openbookchain.co
 
 ---
 
+## Accounting Period Audit
+
+Publishers close accounting periods with ordinary v3 records of type [`acc-period-close`](standards/v3/types/acc-period-close/1/README.md). Verifying one such record on the main page checks it like any record and recomputes its member count and Merkle root.
+
+The **Period audit** page (`/audit`) runs the rebuild and completeness check (section 5 of the type's specification). It needs:
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| Publisher wallet | yes | The organisation's wallet P |
+| Network | yes | Mainnet Beta, Devnet or Testnet |
+| Latest close transaction | no | Where to start following `previous-period` links. Without it, the period that ends last is used |
+| Storage bases | no | Extra https bases with the off-chain files, tried after the location account's |
+| Label map | no | `label:name = https://…` lines that resolve the location account's opaque `label:` bases |
+
+It reads every record P signed and downloads every file, then reports each period as **complete**, **failed** (late entry, omitted, changed after close, broken member, invalid period record) or **open**, plus gaps, overlaps and broken links between periods. Files are only fetched over public https, with the same SSRF checks and the 50 MB cap as any verification.
+
+The audit is bounded by configuration:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `Verification:Audit:MaxPages` | `50` | Pages of 1000 signatures read from P's history before the report says "history incomplete" |
+| `Verification:Audit:Concurrency` | `4` | Transactions and files read in parallel |
+
+Large books mean many RPC calls and downloads; running the verifier locally (`dotnet run --project src/OBC.Verify.Web`) with your own RPC limits is often more practical than the public site.
+
+---
+
 ## Repository Structure
 
 ```
@@ -83,7 +110,9 @@ OBC.Verify/
 │       ├── location-schema.json← JSON Schema for the location account content
 │       ├── envelope-schema.json← JSON Schema for the off-chain envelope
 │       ├── types.json          ← Registry of document schema ids
-│       └── types/journal/2/    ← obc.journal/2 data schema
+│       └── types/
+│           ├── journal/2/      ← obc.journal/2 data schema
+│           └── acc-period-close/1/ ← obc.acc-period-close/1 schema and specification
 ├── src/
 │   └── OBC.Verify.Web/         ← Blazor verification dashboard
 └── tests/

@@ -19,6 +19,10 @@ public sealed class EnvelopeResult
     public bool DataValidated { get; set; }
     public List<string> DataErrors { get; } = new();
     public List<RecordLink> Links { get; } = new();
+    /// <summary>The booking date named by the type's <c>bookingDate</c> field in the registry, null when it has none or for a tombstone.</summary>
+    public DateOnly? BookingDate { get; set; }
+    /// <summary>The close or reopen, for an <c>obc.acc-period-close/1</c> record whose data was read.</summary>
+    public PeriodClose? PeriodClose { get; set; }
 }
 
 /// <summary>Section 6, steps 8–10: validate the v3 envelope, then data against the schema it names.</summary>
@@ -105,9 +109,22 @@ public static class EnvelopeValidator
             if (result.IsVoided || dataSchema is null) return result;
 
             result.DataValidated = true;
-            foreach (var error in dataSchema.Validate(root.GetProperty("data").GetRawText()))
+            var data = root.GetProperty("data");
+            foreach (var error in dataSchema.Validate(data.GetRawText()))
             {
                 result.DataErrors.Add(FormatError(error));
+            }
+
+            if (_schemas.Value.BookingDateFields.TryGetValue(result.SchemaId, out var field))
+            {
+                result.BookingDate = ReadDate(data, field);
+            }
+
+            if (result.SchemaId == PeriodClose.SchemaId && result.DataErrors.Count == 0)
+            {
+                result.PeriodClose = PeriodClose.Read(data);
+                result.PeriodClose.PreviousPeriodHash = result.Links.FirstOrDefault(l => l.Rel == PeriodClose.PreviousPeriodRel)?.Hash;
+                result.DataErrors.AddRange(result.PeriodClose.Check());
             }
         }
 
@@ -129,6 +146,13 @@ public static class EnvelopeValidator
         }
     }
 
+    /// <summary>The date part of a date or date-time string, as written (no time zone conversion).</summary>
+    private static DateOnly? ReadDate(JsonElement data, string field)
+    {
+        var value = GetString(data, field);
+        return value is { Length: >= 10 } ? PeriodClose.ParseDate(value[..10]) : null;
+    }
+
     private static string? GetString(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
@@ -144,22 +168,25 @@ public static class EnvelopeValidator
         return $"{path}: {error.Kind}";
     }
 
-    private sealed record Schemas(JsonSchema Envelope, Dictionary<string, JsonSchema> Types);
+    /// <param name="BookingDateFields">Schema id → the data field holding the booking date (registry <c>bookingDate</c>).</param>
+    private sealed record Schemas(JsonSchema Envelope, Dictionary<string, JsonSchema> Types, Dictionary<string, string> BookingDateFields);
 
     private static Schemas LoadSchemas()
     {
         var envelope = LoadSchema("envelope-schema.json");
 
         var types = new Dictionary<string, JsonSchema>(StringComparer.Ordinal);
+        var bookingDates = new Dictionary<string, string>(StringComparer.Ordinal);
         using var registry = JsonDocument.Parse(ReadResource("types.json"));
         foreach (var entry in registry.RootElement.GetProperty("schemas").EnumerateArray())
         {
             if (entry.GetProperty("schemaUrl").ValueKind != JsonValueKind.String) continue; // reserved
             var id = entry.GetProperty("id").GetString()!;
             types[id] = LoadSchema(entry.GetProperty("schemaUrl").GetString()!);
+            if (GetString(entry, "bookingDate") is { } field) bookingDates[id] = field;
         }
 
-        return new Schemas(envelope, types);
+        return new Schemas(envelope, types, bookingDates);
     }
 
     /// <summary>

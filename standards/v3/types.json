@@ -1,12 +1,21 @@
 {
-  "description": "Registry of the document schema ids known to the OBC v3 standard. A schema version, once published, never changes; new fields mean obc.<type>/<n+1>.",
+  "description": "Registry of the document schema ids known to the OBC v3 standard. A schema version, once published, never changes; new fields mean obc.<type>/<n+1>. bookingDate names the data field that places a document in an accounting period (acc-period-close); a type without it can't be a period member.",
   "schemas": [
     {
       "id": "obc.journal/2",
       "type": "journal",
       "status": "active",
       "schemaUrl": "types/journal/2/schema.json",
+      "bookingDate": "JournalDate",
       "description": "Journal content: the v2 off-chain journal document without its top-level version."
+    },
+    {
+      "id": "obc.acc-period-close/1",
+      "type": "acc-period-close",
+      "status": "active",
+      "schemaUrl": "types/acc-period-close/1/schema.json",
+      "bookingDate": null,
+      "description": "Accounting period close or reopen: the period range, its state and, for a close, every member record with their count and Merkle root. See types/acc-period-close/1/README.md."
     },
     {
       "id": "obc.invoice/1",

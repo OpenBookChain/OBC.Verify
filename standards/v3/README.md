@@ -143,7 +143,9 @@ Unknown top-level fields must be ignored.
 - [`types.json`](types.json) lists the known schema ids and points to `types/<type>/<n>/schema.json`.
 - Entries:
   - `obc.journal/2` ([schema](types/journal/2/schema.json)): the v2 journal content (the v2 off-chain document without its top-level `version`), with property names as OBC serializes them (PascalCase, e.g. `EntryNumber`, `LineItems`). **Required** for v3.
+  - `obc.acc-period-close/1` ([schema](types/acc-period-close/1/schema.json), [specification](types/acc-period-close/1/README.md)): an accounting period close or reopen. Lists every record booked in the period with a count and a Merkle root, so an auditor with off-chain access can check that the period is complete.
   - `obc.invoice/1`: reserved for the invoice type. Its schema isn't defined yet.
+- A type that can be a member of an accounting period names its booking-date field in `types.json` (`bookingDate`): `JournalDate` for `obc.journal/2`.
 - A schema version, once published, never changes. New fields mean `obc.<type>/<n+1>`.
 - Type schemas are closed: `obc.journal/2` sets `additionalProperties: false`, so a field the publisher adds later fails validation against it. That is intended. A publisher that adds a field must publish it under a new schema id (e.g. `obc.journal/3`) and keep emitting the old shape for the old id.
 - Fields that the publisher omits when they are empty or null (such as `EntryNumber` when a journal has neither an entry number nor a reference) are optional in the schema. `JournalDate`, `LineItems`, `Taxes` and `CustomFields` are always emitted, and every line item always has `Amount` and `Tags`.
@@ -244,7 +246,7 @@ Unknown fields must be ignored.
 5. **Build candidate URLs:** `{base}/{h}.json` for each base in `b` (in order), then the memo's `a` if present.
 6. **Fetch** each candidate until one succeeds:
    - HTTPS only. Reject hosts that resolve to private, loopback or link-local addresses. Re-check after redirects.
-   - Size cap (e.g. 5 MB) and timeout.
+   - Size cap (50 MB, which fits a period close of about 250,000 members) and timeout.
 7. **Hash** the raw response bytes with SHA-256 and compare with `h`. Report which source matched.
 8. **Validate** the envelope against `envelope-schema.json`. Check that `schema` matches `type`.
 9. **Validate** `data` against the schema named in `schema`. If the verifier doesn't know that schema id, it reports the record as **integrity verified, type not recognized** (steps 1–7 passed) rather than failing. **Skip this step for a tombstone** (`"status": "voided"`): report the record as **voided**, with its `reason`.
@@ -256,6 +258,8 @@ Unknown fields must be ignored.
     4. **Forwards:** if a record with a higher `n` exists, report **superseded by version N (date)**, and **voided** if the latest is a tombstone.
     5. **Forks:** two different signed records with the same `d` and `n`, or two with the same `p`, are reported as **fork** (warning). The verifier never silently picks one.
     6. The integrity result from step 7 stands on its own. A superseded, voided or forked record is still reported as **authentic**, with the history next to it.
+
+For an `acc-period-close` record, step 9 also recomputes the member count and Merkle root. Checking that a whole period is complete is a separate auditor procedure that needs off-chain access; see [acc-period-close section 5](types/acc-period-close/1/README.md#5-verifying).
 
 The location account only affects **where** the verifier looks. A wrong, stale or hostile location can make verification fail, never succeed falsely, because step 7 checks the bytes.
 

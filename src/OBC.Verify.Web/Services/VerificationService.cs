@@ -233,6 +233,7 @@ public class VerificationService
         {
             return result;
         }
+        ReportPeriodClose(memo, result);
         await ResolveLinksAsync(bases, result, ct);
         result.IsVerified = true;
 
@@ -398,7 +399,30 @@ public class VerificationService
         }
 
         result.Links = envelope.Links;
+        result.PeriodClose = envelope.PeriodClose;
         return true;
+    }
+
+    /// <summary>
+    /// acc-period-close: the count and root were already recomputed while validating the data (a mismatch fails it).
+    /// In public mode the document id names the range, so it must match from/to.
+    /// </summary>
+    private static void ReportPeriodClose(OnChainMemo memo, VerificationResult result)
+    {
+        if (result.PeriodClose is not { } period) return;
+
+        var detail = period.IsClosed
+            ? $"{period.Range} closed: {period.Count:N0} members, count and Merkle root {period.Root} recomputed and match"
+            : $"{period.Range} reopened";
+        result.Steps.Add(new VerificationStep { Name = "Check Period Close", Passed = true, Detail = detail });
+
+        if (PeriodClose.RangeFromPublicId(memo.DocumentId!) is { } range
+            && (range.From != PeriodClose.FormatDate(period.From) || range.To != PeriodClose.FormatDate(period.To)))
+        {
+            var warning = $"The document id names the period {range.From} – {range.To}, but the record says {period.Range}.";
+            result.Steps.Add(new VerificationStep { Name = "Check Period Id", Passed = false, IsWarning = true, Detail = warning });
+            result.Warnings.Add(warning);
+        }
     }
 
     /// <summary>Step 10: a broken link doesn't change the result for this record.</summary>
