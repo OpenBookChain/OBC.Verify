@@ -1,6 +1,12 @@
-﻿<nav class="site-nav" aria-label="Primary">
+﻿@using OBC.Verify.Web.Models
+@inject PeriodAuditOptions AuditOptions
+
+<nav class="site-nav" aria-label="Primary">
     <NavLink class="site-nav-link" href="" Match="NavLinkMatch.All">Verify</NavLink>
-    <NavLink class="site-nav-link" href="audit">Period audit</NavLink>
+    @if (AuditOptions.Enabled)
+    {
+        <NavLink class="site-nav-link" href="audit">Period audit</NavLink>
+    }
     <NavLink class="site-nav-link" href="standards">Standards</NavLink>
     <a class="site-nav-link site-nav-link-external" href="https://github.com/OpenBookChain/OBC.Verify" target="_blank" rel="noopener noreferrer">GitHub</a>
 </nav>

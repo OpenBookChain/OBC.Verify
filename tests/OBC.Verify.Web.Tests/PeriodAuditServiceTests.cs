@@ -32,7 +32,7 @@ public class PeriodAuditServiceTests
         request.Network = SolanaNetwork.Devnet;
         request.Publisher = TestData.Publisher;
         request.LatestCloseSignature = start;
-        return new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance, new PeriodAuditOptions { Concurrency = 3 })
+        return new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance, new PeriodAuditOptions { Enabled = true, Concurrency = 3, RpcRequestsPerSecond = 10_000 })
             .AuditAsync(request);
     }
 
@@ -383,10 +383,54 @@ public class PeriodAuditServiceTests
     [Fact]
     public async Task Invalid_publisher_is_an_error()
     {
-        var report = await new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance)
+        var report = await new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance, new PeriodAuditOptions { Enabled = true })
             .AuditAsync(new PeriodAuditRequest { Publisher = "not-a-wallet" });
 
         Assert.Contains("not a valid", report.Error);
+    }
+
+    [Fact]
+    public async Task Disabled_audit_reads_nothing()
+    {
+        Close(Sep1, Sep30, [Journal("2026-09-03")]);
+
+        var report = await new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance)
+            .AuditAsync(new PeriodAuditRequest { Network = SolanaNetwork.Devnet, Publisher = TestData.Publisher });
+
+        Assert.Contains("not enabled", report.Error);
+        Assert.Equal(0, _reader.TransactionReads);
+        Assert.Empty(_fetcher.Requests);
+    }
+
+    [Fact]
+    public async Task Audit_is_refused_while_all_slots_are_busy()
+    {
+        Close(Sep1, Sep30, [Journal("2026-09-03")]);
+        var options = new PeriodAuditOptions { Enabled = true, MaxConcurrentAudits = 1, RpcRequestsPerSecond = 10_000 };
+        using var gate = new PeriodAuditGate(options);
+        var service = new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance, options, gate);
+
+        using (gate.TryEnter())
+        {
+            var busy = await service.AuditAsync(new PeriodAuditRequest { Network = SolanaNetwork.Devnet, Publisher = TestData.Publisher });
+            Assert.Contains("Another period audit is running", busy.Error);
+        }
+
+        var after = await service.AuditAsync(new PeriodAuditRequest { Network = SolanaNetwork.Devnet, Publisher = TestData.Publisher });
+        Assert.True(after.AllComplete, after.Error);
+    }
+
+    [Fact]
+    public async Task Rpc_calls_wait_for_the_shared_rate_limit()
+    {
+        using var gate = new PeriodAuditGate(new PeriodAuditOptions { RpcRequestsPerSecond = 2 });
+        var reader = gate.Limit(_reader);
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        for (var i = 0; i < 5; i++) await reader.GetAccountAsync(TestData.Publisher);
+
+        // 2 tokens at once, then 2 per second: the 5th call waits for the second refill.
+        Assert.True(watch.Elapsed >= TimeSpan.FromSeconds(1.5), $"took {watch.Elapsed}");
     }
 
     [Fact]
@@ -395,7 +439,7 @@ public class PeriodAuditServiceTests
         for (var i = 0; i < 3; i++) Journal("2026-09-03");
         var sept = Close(Sep1, Sep30, []);
 
-        var report = await new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance, new PeriodAuditOptions { MaxPages = 0 })
+        var report = await new PeriodAuditService(_reader, _fetcher, NullLogger<PeriodAuditService>.Instance, new PeriodAuditOptions { Enabled = true, MaxPages = 0, RpcRequestsPerSecond = 10_000 })
             .AuditAsync(new PeriodAuditRequest { Network = SolanaNetwork.Devnet, Publisher = TestData.Publisher, LatestCloseSignature = sept.Sig });
 
         Assert.False(report.HistoryComplete);

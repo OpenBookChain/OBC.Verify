@@ -17,6 +17,16 @@
         </p>
     </div>
 
+    @if (!AuditService.IsEnabled)
+    {
+        <div class="alert alert-info">
+            The period audit is turned off on this server: it reads every record of a publisher from Solana and downloads every file,
+            which is too heavy for a shared public verifier. Run the verifier yourself with <code>Verification:Audit:Enabled</code> set to
+            <code>true</code> (see the <a href="https://github.com/OpenBookChain/OBC.Verify#accounting-period-audit" target="_blank" rel="noopener noreferrer">README</a>).
+        </div>
+    }
+    else
+    {
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <EditForm Model="_input" OnValidSubmit="RunAuditAsync" FormName="audit-form">
@@ -70,6 +80,7 @@
             </EditForm>
         </div>
     </div>
+    }
 
     @if (_report is { } report)
     {

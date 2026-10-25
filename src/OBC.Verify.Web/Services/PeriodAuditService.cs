@@ -21,27 +21,50 @@ public class PeriodAuditService
     private readonly ISolanaReaderFactory _readerFactory;
     private readonly IDocumentFetcher _fetcher;
     private readonly PeriodAuditOptions _options;
+    private readonly PeriodAuditGate _gate;
     private readonly ILogger<PeriodAuditService> _logger;
 
-    public PeriodAuditService(ISolanaReaderFactory readerFactory, IDocumentFetcher fetcher, ILogger<PeriodAuditService> logger, PeriodAuditOptions? options = null)
+    /// <param name="gate">Shared by every audit of the application; a private one is created when null (tests).</param>
+    public PeriodAuditService(ISolanaReaderFactory readerFactory, IDocumentFetcher fetcher, ILogger<PeriodAuditService> logger,
+        PeriodAuditOptions? options = null, PeriodAuditGate? gate = null)
     {
         _readerFactory = readerFactory;
         _fetcher = fetcher;
         _logger = logger;
         _options = options ?? new PeriodAuditOptions();
+        _gate = gate ?? new PeriodAuditGate(_options);
     }
+
+    public bool IsEnabled => _options.Enabled;
 
     public async Task<PeriodAuditReport> AuditAsync(PeriodAuditRequest request, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         var publisher = request.Publisher.Trim();
         var report = new PeriodAuditReport { Publisher = publisher, Network = request.Network.ToString() };
+        if (!_options.Enabled)
+        {
+            report.Error = "The period audit is not enabled on this server (Verification:Audit:Enabled).";
+            return report;
+        }
         if (!PublicKey.IsValid(publisher))
         {
             report.Error = $"'{publisher}' is not a valid Solana wallet address.";
             return report;
         }
 
-        var reader = _readerFactory.Create(request.Network);
+        using var slot = _gate.TryEnter();
+        if (slot is null)
+        {
+            report.Error = "Another period audit is running on this server. Try again later, or run the verifier yourself.";
+            return report;
+        }
+
+        return await RunAsync(request, publisher, report, progress, ct);
+    }
+
+    private async Task<PeriodAuditReport> RunAsync(PeriodAuditRequest request, string publisher, PeriodAuditReport report, IProgress<string>? progress, CancellationToken ct)
+    {
+        var reader = _gate.Limit(_readerFactory.Create(request.Network));
         List<AuditRecord> records;
         try
         {

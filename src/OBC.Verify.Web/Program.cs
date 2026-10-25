@@ -14,7 +14,9 @@ builder.Services.AddHttpClient<IDocumentFetcher, SafeHttpFetcher>()
 builder.Services.AddSingleton<ISolanaReaderFactory, SolnetSolanaReaderFactory>();
 builder.Services.AddSingleton(builder.Configuration.GetSection("Verification:ChainScan").Get<ChainScanOptions>() ?? new ChainScanOptions());
 builder.Services.AddScoped<VerificationService>();
-builder.Services.AddSingleton(builder.Configuration.GetSection("Verification:Audit").Get<PeriodAuditOptions>() ?? new PeriodAuditOptions());
+var auditOptions = builder.Configuration.GetSection("Verification:Audit").Get<PeriodAuditOptions>() ?? new PeriodAuditOptions();
+builder.Services.AddSingleton(auditOptions);
+builder.Services.AddSingleton(new PeriodAuditGate(auditOptions)); // one RPC rate limit and audit slot pool per server
 builder.Services.AddScoped<PeriodAuditService>();
 
 // Add services to the container.

@@ -18,6 +18,15 @@ public sealed class PeriodAuditRequest
 /// <summary>Bounds for the period audit (configuration section "Verification:Audit").</summary>
 public sealed class PeriodAuditOptions
 {
+    /// <summary>
+    /// The audit is expensive (one RPC call per record, one download per file), so it is off unless a server turns it on.
+    /// A public server can leave it off; auditors run the verifier themselves with it enabled.
+    /// </summary>
+    public bool Enabled { get; set; }
+    /// <summary>Audits that may run at the same time on this server. Another request is refused while all are busy.</summary>
+    public int MaxConcurrentAudits { get; set; } = 1;
+    /// <summary>Solana RPC calls per second, shared by every audit on this server. Calls beyond it wait.</summary>
+    public int RpcRequestsPerSecond { get; set; } = 5;
     /// <summary>Pages of 1000 signatures read from the publisher's history before stopping with "history incomplete".</summary>
     public int MaxPages { get; set; } = 50;
     /// <summary>Transactions and files read in parallel.</summary>

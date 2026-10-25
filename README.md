@@ -70,7 +70,13 @@ Example: [`/?tx=2dkr9oBK…BP95&network=devnet`](https://verify.openbookchain.co
 
 Publishers close accounting periods with ordinary v3 records of type [`acc-period-close`](standards/v3/types/acc-period-close/1/README.md). Verifying one such record on the main page checks it like any record and recomputes its member count and Merkle root.
 
-The **Period audit** page (`/audit`) runs the rebuild and completeness check (section 5 of the type's specification). It needs:
+The **Period audit** page (`/audit`) runs the rebuild and completeness check (section 5 of the type's specification). It is **off by default**: it reads every record of a publisher from Solana and downloads every file, which is too heavy for a shared public server. Auditors run the verifier themselves and turn it on:
+
+```
+dotnet run --project src/OBC.Verify.Web --Verification:Audit:Enabled=true
+```
+
+It needs:
 
 | Input | Required | Description |
 |-------|----------|-------------|
@@ -86,10 +92,13 @@ The audit is bounded by configuration:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| `Verification:Audit:Enabled` | `false` | Shows the page and allows audits on this server |
+| `Verification:Audit:MaxConcurrentAudits` | `1` | Audits running at the same time; another request is refused while all are busy |
+| `Verification:Audit:RpcRequestsPerSecond` | `5` | Solana RPC calls per second, shared by every audit on the server; further calls wait |
 | `Verification:Audit:MaxPages` | `50` | Pages of 1000 signatures read from P's history before the report says "history incomplete" |
-| `Verification:Audit:Concurrency` | `4` | Transactions and files read in parallel |
+| `Verification:Audit:Concurrency` | `4` | Transactions and files read in parallel within one audit |
 
-Large books mean many RPC calls and downloads; running the verifier locally (`dotnet run --project src/OBC.Verify.Web`) with your own RPC limits is often more practical than the public site.
+With your own RPC endpoint you can raise `RpcRequestsPerSecond`; public endpoints allow only a few calls per second.
 
 ---
 
